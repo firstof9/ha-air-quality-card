@@ -91,6 +91,26 @@ describe('computeScore', () => {
     const validAdvice = SCORE_BANDS.map(b => b.advice);
     assert.ok(validAdvice.includes(r.advice), `unexpected advice "${r.advice}"`);
   });
+
+  test('VOC Index (default/unknown unit) uses Index thresholds', () => {
+    // 300 is the limit for Index -> Bad (score 0)
+    const r = computeScore({ voc: 300 });
+    assert.equal(r.score, 0);
+  });
+
+  test('VOC ppb uses ppb thresholds', () => {
+    // 500 is Moderate for ppb (limit 1000) -> 50 penalty -> 50 Poor
+    const r = computeScore({ voc: 500, voc_unit: 'ppb' });
+    assert.equal(r.score, 50);
+    assert.equal(r.label, 'Poor');
+  });
+
+  test('VOC µg/m³ uses µg/m³ thresholds', () => {
+    // 600 is Moderate for µg/m³ (limit 1500) -> 40 penalty -> 60 Moderate
+    const r = computeScore({ voc: 600, voc_unit: 'µg/m³' });
+    assert.equal(r.score, 60);
+    assert.equal(r.label, 'Moderate');
+  });
 });
 
 describe('calcThreshold', () => {

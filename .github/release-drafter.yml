@@ -19,6 +19,10 @@ categories:
       - 'chore'
       - 'refactor'
       - 'ci'
+  - title: '📦 Dependencies'
+    collapse-after: 2
+    labels:
+      - 'dependencies'
 
 # Auto-apply labels based on PR title (conventional commits) so the
 # categories above actually populate without anyone touching labels by
@@ -50,6 +54,10 @@ autolabeler:
     title:
       - '/^style(\(.+\))?:/i'
       - '/^test(\(.+\))?:/i'
+  - label: 'dependencies'
+    title:
+      - '/^build\(deps\)(\(.+\))?:/i'
+      - '/^deps(\(.+\))?:/i'
 
 template: |
   ## Changes

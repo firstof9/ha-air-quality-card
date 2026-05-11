@@ -11,23 +11,23 @@ import type {
 } from './types.js';
 
 // Pollutant tile thresholds: { good, mod, high } in the sensor's native unit.
-// Sources:
-//   PM1   - WHO 2021 AQG (no formal limit; values aligned with PM2.5 short-term band)
-//   PM2.5 - US EPA NAAQS: 12 ug/m3 annual, 35 ug/m3 24-hour, ~75 ug/m3 unhealthy
-//   PM4   - extrapolated between PM2.5 and PM10 (no formal standard)
-//   PM10  - WHO 2021 AQG 24-hour 50 ug/m3, US EPA NAAQS 24-hour 150 ug/m3
-//   VOC   - Sensirion VOC Index (0-500, baseline 100). NOT valid for TVOC sensors
-//           reporting ppb or ug/m3 - see issue tracker for the open discussion.
-//   CO2   - ASHRAE 62.1 ventilation guidance ~1000 ppm, Harvard COGfx cognitive
-//           impact threshold ~2000 ppm
 export const POLLUTANT_THRESHOLDS = {
   pm1:  { good: 10,  mod: 25,   high: 50   },
   pm25: { good: 12,  mod: 35,   high: 75   },
   pm4:  { good: 20,  mod: 50,   high: 100  },
   pm10: { good: 50,  mod: 150,  high: 250  },
-  voc:  { good: 100, mod: 200,  high: 300  },
+  voc_index: { good: 100, mod: 200,  high: 300 }, // Sensirion Index
+  voc_ppb:   { good: 250, mod: 500,  high: 1000 }, // ppb
+  voc_ugm3:  { good: 300, mod: 600,  high: 1500 }, // ug/m3
   co2:  { good: 800, mod: 1200, high: 2000 },
 } as const;
+
+export function getVocThresholds(unit?: string) {
+  const u = (unit ?? '').toLowerCase();
+  if (u.includes('ppb')) return POLLUTANT_THRESHOLDS.voc_ppb;
+  if (u.includes('m³') || u.includes('m3')) return POLLUTANT_THRESHOLDS.voc_ugm3;
+  return POLLUTANT_THRESHOLDS.voc_index;
+}
 
 // US EPA AirNow AQI bands (https://www.airnow.gov/aqi/aqi-basics/).
 //   color: bright tint for the ring, chip background, dot, tile bars
@@ -120,14 +120,16 @@ interface ComputeScoreInput {
   pm25?: number | null;
   pm10?: number | null;
   voc?: number | null;
+  voc_unit?: string;
   co2?: number | null;
 }
 
-export function computeScore({ pm25, pm10, voc, co2 }: ComputeScoreInput): ScoreResult {
+export function computeScore({ pm25, pm10, voc, voc_unit, co2 }: ComputeScoreInput): ScoreResult {
+  const vocThresholds = getVocThresholds(voc_unit);
   const pollutants = [
     { value: pm25, limit: 75 },
     { value: pm10, limit: 150 },
-    { value: voc,  limit: 300 },
+    { value: voc,  limit: vocThresholds.high },
     { value: co2 != null ? co2 - 400 : null, limit: 1600 },
   ].filter((p): p is { value: number; limit: number } => p.value != null);
 

@@ -24,7 +24,7 @@ categories:
 # categories above actually populate without anyone touching labels by
 # hand. Conventional-commit titles are already enforced by lint-pr-title.
 autolabeler:
-  - label: 'feat'
+  - label: 'feature'
     title:
       - '/^feat(\(.+\))?:/i'
   - label: 'fix'

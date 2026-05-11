@@ -29,8 +29,8 @@ This card optionally uses [mini-graph-card](https://github.com/kalkih/mini-graph
 
 ### Manual
 
-1. Download `air-quality-card.js` from the latest release.
-2. Copy it to your `config/www/` directory.
+1. Download both `air-quality-card.js` and `helpers.js` from the latest release.
+2. Copy both files to your `config/www/` directory (they must sit next to each other; `air-quality-card.js` imports from `./helpers.js`).
 3. Add the following to your `configuration.yaml` or through the UI:
    ```yaml
    resources:

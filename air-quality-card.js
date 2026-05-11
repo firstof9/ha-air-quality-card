@@ -3,131 +3,17 @@
 // ============================================================
 const VERSION = '0.1.0';
 
-// Pollutant tile thresholds: { good, mod, high } in the sensor's native unit.
-// Sources:
-//   PM1   - WHO 2021 AQG (no formal limit; values aligned with PM2.5 short-term band)
-//   PM2.5 - US EPA NAAQS: 12 ug/m3 annual, 35 ug/m3 24-hour, ~75 ug/m3 unhealthy
-//   PM4   - extrapolated between PM2.5 and PM10 (no formal standard)
-//   PM10  - WHO 2021 AQG 24-hour 50 ug/m3, US EPA NAAQS 24-hour 150 ug/m3
-//   VOC   - Sensirion VOC Index (0-500, baseline 100). NOT valid for TVOC sensors
-//           reporting ppb or ug/m3 - see issue tracker for the open discussion.
-//   CO2   - ASHRAE 62.1 ventilation guidance ~1000 ppm, Harvard COGfx cognitive
-//           impact threshold ~2000 ppm
-const POLLUTANT_THRESHOLDS = {
-  pm1:  { good: 10,  mod: 25,   high: 50   },
-  pm25: { good: 12,  mod: 35,   high: 75   },
-  pm4:  { good: 20,  mod: 50,   high: 100  },
-  pm10: { good: 50,  mod: 150,  high: 250  },
-  voc:  { good: 100, mod: 200,  high: 300  },
-  co2:  { good: 800, mod: 1200, high: 2000 },
-};
-
-// US EPA AirNow AQI bands (https://www.airnow.gov/aqi/aqi-basics/).
-//   color: bright tint for the ring, chip background, dot, tile bars
-//   text:  darker variant used wherever the band color is foreground text
-// Both are exposed as CSS custom properties so users can override them
-// in their theme YAML, card_mod, or :host overrides. Defaults: Tailwind
-// 200/300 (color) and 600 (text). The text variants give ~4:1 contrast
-// on light theme where the bright tints fail WCAG AA.
-const AQI_BANDS = [
-  { max: 50,       color: 'var(--air-quality-card-good-color, #86efac)',           text: 'var(--air-quality-card-good-text, #16a34a)',           label: 'Good',           advice: 'Air quality is satisfactory.' },
-  { max: 100,      color: 'var(--air-quality-card-moderate-color, #fde68a)',       text: 'var(--air-quality-card-moderate-text, #ca8a04)',       label: 'Moderate',       advice: 'Acceptable air quality.' },
-  { max: 150,      color: 'var(--air-quality-card-unhealthy-sg-color, #fdba74)',   text: 'var(--air-quality-card-unhealthy-sg-text, #ea580c)',   label: 'Unhealthy (SG)', advice: 'Sensitive groups may be affected.' },
-  { max: 200,      color: 'var(--air-quality-card-unhealthy-color, #fca5a5)',      text: 'var(--air-quality-card-unhealthy-text, #dc2626)',      label: 'Unhealthy',      advice: 'Everyone may experience health effects.' },
-  { max: 300,      color: 'var(--air-quality-card-very-unhealthy-color, #d8b4fe)', text: 'var(--air-quality-card-very-unhealthy-text, #9333ea)', label: 'V. Unhealthy',   advice: 'Health alert: risk is increased.' },
-  { max: Infinity, color: 'var(--air-quality-card-hazardous-color, #fda4af)',      text: 'var(--air-quality-card-hazardous-text, #e11d48)',      label: 'Hazardous',      advice: 'Emergency health warning.' },
-];
-
-// Internal score-mode bands (lower is worse, 0-100 scale). Colors map
-// to the same custom-property family as AQI_BANDS for consistency.
-const SCORE_BANDS = [
-  { min: 80,        color: 'var(--air-quality-card-good-color, #86efac)',     text: 'var(--air-quality-card-good-text, #16a34a)',     label: 'Good',     advice: 'Air quality is good' },
-  { min: 60,        color: 'var(--air-quality-card-moderate-color, #fde68a)', text: 'var(--air-quality-card-moderate-text, #ca8a04)', label: 'Moderate', advice: 'Air quality is moderate' },
-  { min: 40,        color: 'var(--air-quality-card-poor-color, #fdba74)',     text: 'var(--air-quality-card-poor-text, #ea580c)',     label: 'Poor',     advice: 'Consider ventilating' },
-  { min: -Infinity, color: 'var(--air-quality-card-bad-color, #fca5a5)',      text: 'var(--air-quality-card-bad-text, #dc2626)',      label: 'Bad',      advice: 'Ventilate now' },
-];
-
-// Translatable strings for the card-rendered UI. Translators can add a
-// new top-level key (e.g. STRINGS.de) mirroring the 'en' shape and the
-// card will pick it up automatically based on hass.locale.language.
-// AQI/score band labels and advice stay on the band tables themselves
-// for now; localizing those is a separate, larger pass.
-const STRINGS = {
-  en: {
-    topName: { aqi: 'AQI Sensor', score: 'Calculated Score' },
-    subtitle: 'Climate · Air Quality',
-    ring: { aqi: 'AQI', score: 'SCORE' },
-    stats: { temp: 'TEMP', humidity: 'HUMIDITY' },
-    advice: {
-      vocHigh:     'VOCs detected',
-      co2High:     'CO2 high - open a window',
-      co2VeryHigh: 'CO2 very high - ventilate',
-    },
-  },
-};
-
-// Pure helpers - extracted from the class so they can be unit-tested
-// without spinning up a DOM. See test/score.test.mjs.
-
-// color = bright tint for bar fill, text = readable on both themes.
-// Both routed through CSS custom properties (defaults match the band
-// tables above).
-function calcThreshold(value, good, mod, high) {
-  if (value == null) return { label: '--',     color: 'var(--divider-color, #444)', text: 'var(--secondary-text-color)', pct: 0 };
-  if (value <= good) return { label: 'GOOD',   color: 'var(--air-quality-card-good-color, #86efac)',         text: 'var(--air-quality-card-good-text, #16a34a)',         pct: Math.min(100, (value / high) * 100) };
-  if (value <= mod)  return { label: 'MOD',    color: 'var(--air-quality-card-moderate-color, #fde68a)',     text: 'var(--air-quality-card-moderate-text, #ca8a04)',     pct: Math.min(100, (value / high) * 100) };
-  if (value <= high) return { label: 'HIGH',   color: 'var(--air-quality-card-unhealthy-sg-color, #fdba74)', text: 'var(--air-quality-card-unhealthy-sg-text, #ea580c)', pct: Math.min(100, (value / high) * 100) };
-  return                    { label: 'V.HIGH', color: 'var(--air-quality-card-unhealthy-color, #fca5a5)',    text: 'var(--air-quality-card-unhealthy-text, #dc2626)',    pct: 100 };
-}
-
-// Computes the calculated-score-mode headline state from the three
-// contributing pollutants. Each pollutant contributes a penalty fraction
-// in [0, 1] times its weight. Missing pollutants are dropped and the
-// remaining weights renormalize to 100, so a partial sensor set still
-// spans 0-100 instead of getting an artificial ceiling.
-//
-// Divisor calibration (the value at which a pollutant's penalty saturates):
-//   PM2.5 75 ug/m3 -> US EPA "Unhealthy for Sensitive Groups" boundary
-//   VOC   500      -> Sensirion VOC Index ceiling (full scale)
-//   CO2   2200 ppm above 400 baseline -> Harvard COGfx cognitive impact threshold
-//
-// Returns: { score, label, color, advice, pct } where score is null when
-// no pollutants are present (empty-state).
-function computeScore({ pm25, voc, co2 }) {
-  const pollutants = [
-    { value: pm25, divisor: 75,   weight: 40 },
-    { value: voc,  divisor: 500,  weight: 25 },
-    { value: co2 != null ? co2 - 400 : null, divisor: 2200, weight: 35 },
-  ].filter(p => p.value != null);
-
-  if (pollutants.length === 0) {
-    return {
-      score: null,
-      label: 'No data',
-      color: 'var(--air-quality-card-no-data-color, #9ca3af)',
-      text: 'var(--secondary-text-color)',
-      advice: 'Configure PM2.5, VOC, or CO₂ sensors to see a calculated score.',
-      pct: 0,
-    };
-  }
-
-  const totalWeight = pollutants.reduce((s, p) => s + p.weight, 0);
-  const totalPenalty = pollutants.reduce((s, p) => {
-    const frac = Math.min(1, Math.max(0, p.value / p.divisor));
-    return s + frac * (p.weight / totalWeight) * 100;
-  }, 0);
-  const score = Math.min(100, Math.max(0, Math.round(100 - totalPenalty)));
-  const band = SCORE_BANDS.find(b => score >= b.min);
-
-  return {
-    score,
-    label: band.label,
-    color: band.color,
-    text: band.text,
-    advice: band.advice,
-    pct: score / 100,
-  };
-}
+// Pure helpers and data tables live in helpers.js so they can be unit-
+// tested without a DOM. See test/score.test.mjs. NOTE: HACS users
+// installing manually need both files in config/www/ for the import to
+// resolve - the release workflow uploads them together.
+import {
+  POLLUTANT_THRESHOLDS,
+  AQI_BANDS,
+  translate,
+  calcThreshold,
+  computeScore,
+} from './helpers.js';
 
 console.info(
   `%c  AIR-QUALITY-CARD  %c  Version ${VERSION}  `,
@@ -199,13 +85,12 @@ class AirQualityCard extends HTMLElement {
 
   static getConfigElement() { return document.createElement("air-quality-card-editor"); }
 
-  // Translate a dotted-path string key from the STRINGS table, falling
-  // back to English when the HA locale doesn't have an entry. e.g.
-  // this.t('stats.temp') -> 'TEMP'.
+  // Translate a dotted-path string key from the STRINGS table for the
+  // active HA locale (falls back to English). e.g. this.t('stats.temp')
+  // -> 'TEMP' in en, whatever the active language has otherwise.
   t(path) {
     const lang = this._hass?.locale?.language || this._hass?.language || 'en';
-    const lookup = (table) => path.split('.').reduce((o, k) => o?.[k], table);
-    return lookup(STRINGS[lang]) ?? lookup(STRINGS.en) ?? path;
+    return translate(path, lang);
   }
 
   static getStubConfig() {
@@ -685,5 +570,5 @@ if (typeof window !== 'undefined') {
   });
 }
 
-// Exports for unit tests (test/score.test.mjs). Browsers ignore these.
-export { computeScore, calcThreshold, AQI_BANDS, SCORE_BANDS, POLLUTANT_THRESHOLDS };
+// (Pure helpers and constants are exported from helpers.js, which is
+// what the test suite imports directly.)

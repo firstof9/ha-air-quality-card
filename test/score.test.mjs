@@ -1,5 +1,5 @@
 // Tests for the pure scoring + threshold helpers exported from
-// air-quality-card.js. Runs under `node --test test/`.
+// helpers.js. Runs under `node --test test/`.
 //
 // The rendering, editor, and HA-card-contract bits aren't covered here -
 // those need a DOM and aren't really useful unit-test targets. The score
@@ -8,17 +8,13 @@
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 
-// The card file declares classes that extend HTMLElement at module
-// load. Stub it so the class declaration parses in Node. customElements
-// and window are guarded in the card itself.
-globalThis.HTMLElement = class {};
-
-const {
+import {
   computeScore,
   calcThreshold,
   AQI_BANDS,
   SCORE_BANDS,
-} = await import('../air-quality-card.js');
+  translate,
+} from '../helpers.js';
 
 describe('computeScore', () => {
   test('empty input returns no-data state', () => {
@@ -175,5 +171,26 @@ describe('AQI_BANDS sanity', () => {
       assert.ok(typeof band.label === 'string' && band.label.length > 0);
       assert.ok(typeof band.advice === 'string' && band.advice.length > 0);
     }
+  });
+});
+
+describe('translate', () => {
+  test('returns the English value for a known key', () => {
+    assert.equal(translate('stats.temp'), 'TEMP');
+    assert.equal(translate('ring.aqi'), 'AQI');
+    assert.equal(translate('advice.co2High'), 'CO2 high - open a window');
+  });
+
+  test('falls back to English when the language is missing', () => {
+    assert.equal(translate('stats.humidity', 'xx'), 'HUMIDITY');
+  });
+
+  test('returns the path itself when the key does not exist', () => {
+    assert.equal(translate('does.not.exist'), 'does.not.exist');
+  });
+
+  test('handles nested object paths', () => {
+    assert.equal(translate('topName.aqi'), 'AQI Sensor');
+    assert.equal(translate('topName.score'), 'Calculated Score');
   });
 });

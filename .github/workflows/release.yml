@@ -21,10 +21,12 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
 
-      - name: Upload air-quality-card.js
+      - name: Upload card assets
         uses: softprops/action-gh-release@v3
         with:
-          files: air-quality-card.js
+          files: |
+            air-quality-card.js
+            helpers.js
           tag_name: ${{ github.event.inputs.tag || github.event.release.tag_name }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

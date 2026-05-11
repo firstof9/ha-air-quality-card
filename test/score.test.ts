@@ -25,7 +25,7 @@ describe('computeScore', () => {
   });
 
   test('all-null pollutants returns no-data state', () => {
-    const r = computeScore({ pm25: null, voc: null, co2: null });
+    const r = computeScore({ pm25: null, pm10: null, voc: null, co2: null });
     assert.equal(r.score, null);
     assert.equal(r.label, 'No data');
   });
@@ -38,43 +38,39 @@ describe('computeScore', () => {
   });
 
   test('PM2.5 alone at 75 ug/m3 saturates the penalty (score 0)', () => {
+    // 75 is the divisor (EPA Unhealthy boundary), so the single
+    // pollutant gets full penalty in the max-sub-index model.
     const r = computeScore({ pm25: 75 });
     assert.equal(r.score, 0);
     assert.equal(r.label, 'Bad');
   });
 
-  test('CO2 alone at 1100 ppm lands in Moderate (not Poor/Bad)', () => {
-    const r = computeScore({ co2: 1100 });
-    assert.ok((r.score ?? -1) >= 60, `expected >= 60 (Moderate), got ${r.score}`);
+  test('PM10 alone at 150 ug/m3 saturates the penalty (score 0)', () => {
+    // 150 is the PM10 divisor.
+    const r = computeScore({ pm10: 150 });
+    assert.equal(r.score, 0);
+    assert.equal(r.label, 'Bad');
   });
 
-  test('CO2 alone at 2000 ppm is below Good band', () => {
-    const r = computeScore({ co2: 2000 });
-    assert.ok((r.score ?? 100) < 80, `expected < 80, got ${r.score}`);
+  test('CO2 alone at 1000 ppm lands in Moderate', () => {
+    // (1000-400)/1600 = 0.375 penalty -> 62.5 score -> 63 Moderate
+    const r = computeScore({ co2: 1000 });
+    assert.equal(r.score, 63);
+    assert.equal(r.label, 'Moderate');
+  });
+
+  test('Worst pollutant wins: 1 bad sensor + 2 perfect sensors = Bad score', () => {
+    // PM2.5 is hazardous, others are perfect. Averaging would show "Moderate",
+    // but Max Sub-Index correctly shows "Bad".
+    const r = computeScore({ pm25: 75, voc: 0, co2: 400 });
+    assert.equal(r.score, 0);
+    assert.equal(r.label, 'Bad');
   });
 
   test('CO2 below 400 ppm baseline contributes no penalty', () => {
     const r = computeScore({ co2: 380 });
     assert.equal(r.score, 100);
     assert.equal(r.label, 'Good');
-  });
-
-  test('renormalization: PM2.5 alone hits the same ceiling as PM2.5+VOC+CO2 all-bad', () => {
-    const single = computeScore({ pm25: 75 });
-    const all = computeScore({ pm25: 75, voc: 500, co2: 2600 });
-    assert.equal(single.score, 0);
-    assert.equal(all.score, 0);
-  });
-
-  test('partial sensors (only PM2.5 and CO2) renormalize correctly', () => {
-    const r = computeScore({ pm25: 37.5, co2: 1500 });
-    const score = r.score ?? -1;
-    assert.ok(score >= 40 && score < 80, `expected 40..79, got ${r.score}`);
-  });
-
-  test('three moderate readings land in Moderate band, not Poor', () => {
-    const r = computeScore({ pm25: 20, voc: 150, co2: 900 });
-    assert.ok((r.score ?? -1) >= 60, `expected >= 60 (Moderate), got ${r.score}`);
   });
 
   test('score is always clamped to [0, 100]', () => {

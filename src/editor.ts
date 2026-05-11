@@ -17,11 +17,11 @@ const SCHEMA: HaFormSchemaEntry[] = [
   { name: 'temp_entity',      label: 'Temperature Sensor',    helper: 'Shown next to the headline. Also feeds the optional history graph.', selector: { entity: { domain: 'sensor', device_class: 'temperature' } } },
   { name: 'humid_entity',     label: 'Humidity Sensor',       helper: 'Shown next to the headline. Also feeds the optional history graph.', selector: { entity: { domain: 'sensor', device_class: 'humidity' } } },
   { name: 'pm1_entity',       label: 'PM1.0 Sensor',          helper: 'Display only - does not contribute to the calculated score.', selector: { entity: { domain: 'sensor', device_class: 'pm1' } } },
-  { name: 'pm25_entity',      label: 'PM2.5 Sensor',          helper: 'Largest contributor to the calculated score (40% weight).', selector: { entity: { domain: 'sensor', device_class: 'pm25' } } },
+  { name: 'pm25_entity',      label: 'PM2.5 Sensor',          helper: 'Drives the score when PM2.5 levels are the worst pollutant.', selector: { entity: { domain: 'sensor', device_class: 'pm25' } } },
   { name: 'pm4_entity',       label: 'PM4.0 Sensor',          helper: 'Display only - does not contribute to the calculated score.', selector: { entity: { domain: 'sensor' } } },
-  { name: 'pm10_entity',      label: 'PM10 Sensor',           helper: 'Display only - does not contribute to the calculated score.', selector: { entity: { domain: 'sensor', device_class: 'pm10' } } },
-  { name: 'voc_entity',       label: 'VOC Index Sensor',      helper: 'Sensirion VOC Index (0-500 scale). Other TVOC sensors may produce misleading bands.', selector: { entity: { domain: 'sensor', device_class: 'volatile_organic_compounds' } } },
-  { name: 'co2_entity',       label: 'CO2 Sensor (ppm)',      helper: "Contributes to the calculated score (35% weight). Drives 'open a window' advice above 1000 ppm.", selector: { entity: { domain: 'sensor', device_class: 'carbon_dioxide' } } },
+  { name: 'pm10_entity',      label: 'PM10 Sensor',           helper: 'Drives the score when PM10 levels are the worst pollutant.', selector: { entity: { domain: 'sensor', device_class: 'pm10' } } },
+  { name: 'voc_entity',       label: 'VOC Index Sensor',      helper: 'Sensirion VOC Index (0-500 scale). Drives the score when VOCs are the worst pollutant.', selector: { entity: { domain: 'sensor', device_class: 'volatile_organic_compounds' } } },
+  { name: 'co2_entity',       label: 'CO2 Sensor (ppm)',      helper: 'Drives the score when CO2 is the worst pollutant (impacts cognitive function above 2000 ppm).', selector: { entity: { domain: 'sensor', device_class: 'carbon_dioxide' } } },
 ];
 
 @customElement('air-quality-card-editor')

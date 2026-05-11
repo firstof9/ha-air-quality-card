@@ -259,7 +259,7 @@ export class AirQualityCard extends LitElement {
       const aqiPct = Math.min(Math.max(aqi, 0) / 500, 1);
       dashOffset = circ - aqiPct * circ;
     } else {
-      const result = computeScore({ pm25, voc, co2 });
+      const result = computeScore({ pm25, pm10, voc, co2 });
       displayValue = result.score == null ? '--' : result.score;
       ringTopText = this.t('ring.score');
       ringColor = result.color;

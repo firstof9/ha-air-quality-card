@@ -5,8 +5,24 @@
   "main": "air-quality-card.js",
   "type": "module",
   "scripts": {
-    "test": "node --test test/"
+    "build": "rollup -c",
+    "build:watch": "rollup -c -w",
+    "typecheck": "tsc --noEmit",
+    "test": "tsx --test test/*.test.ts"
   },
   "author": "firstof9",
-  "license": "MIT"
+  "license": "MIT",
+  "devDependencies": {
+    "@rollup/plugin-node-resolve": "^16.0.0",
+    "@rollup/plugin-terser": "^0.4.4",
+    "@rollup/plugin-typescript": "^12.1.0",
+    "@types/node": "^25.6.2",
+    "rollup": "^4.18.0",
+    "tslib": "^2.6.0",
+    "tsx": "^4.20.0",
+    "typescript": "^5.6.0"
+  },
+  "dependencies": {
+    "lit": "^3.2.0"
+  }
 }

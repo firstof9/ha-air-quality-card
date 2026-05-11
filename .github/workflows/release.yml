@@ -15,18 +15,20 @@ permissions:
 
 jobs:
   release:
-    name: Upload Release Assets
+    name: Build and upload release asset
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v6
-
-      - name: Upload card assets
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+      - run: npm ci
+      - run: npm run build
+      - name: Upload card bundle
         uses: softprops/action-gh-release@v3
         with:
-          files: |
-            air-quality-card.js
-            helpers.js
+          files: air-quality-card.js
           tag_name: ${{ github.event.inputs.tag || github.event.release.tag_name }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

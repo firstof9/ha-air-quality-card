@@ -6,16 +6,36 @@ on:
   pull_request:
 
 jobs:
-  syntax-check:
-    name: JavaScript syntax check
+  typecheck:
+    name: TypeScript type check
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-node@v6
-      - name: Verify air-quality-card.js parses
-        run: node --check air-quality-card.js
-      - name: Verify helpers.js parses
-        run: node --check helpers.js
+        with:
+          node-version: '22'
+      - run: npm ci
+      - run: npm run typecheck
+
+  build:
+    name: Bundle build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+      - run: npm ci
+      - run: npm run build
+      - name: Verify committed bundle matches build output
+        run: |
+          # The committed air-quality-card.js must match what `npm run build`
+          # produces from src/. Fails CI if a PR forgot to rebuild.
+          if [ -n "$(git status --porcelain air-quality-card.js)" ]; then
+            echo "::error::air-quality-card.js is out of sync with src/. Run 'npm run build' and commit."
+            git diff air-quality-card.js
+            exit 1
+          fi
 
   unit-tests:
     name: Unit tests
@@ -23,5 +43,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-node@v6
-      - name: Run unit tests
-        run: npm test
+        with:
+          node-version: '22'
+      - run: npm ci
+      - run: npm test

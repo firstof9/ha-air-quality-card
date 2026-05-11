@@ -29,8 +29,8 @@ This card optionally uses [mini-graph-card](https://github.com/kalkih/mini-graph
 
 ### Manual
 
-1. Download both `air-quality-card.js` and `helpers.js` from the latest release.
-2. Copy both files to your `config/www/` directory (they must sit next to each other; `air-quality-card.js` imports from `./helpers.js`).
+1. Download `air-quality-card.js` from the latest release (it's a single self-contained bundle).
+2. Copy it to your `config/www/` directory.
 3. Add the following to your `configuration.yaml` or through the UI:
    ```yaml
    resources:
@@ -80,3 +80,17 @@ my_theme:
   air-quality-card-good-text:  "#047857"
   air-quality-card-hazardous-color: "#7c2d12"
 ```
+
+## Development
+
+The card is written in TypeScript with [Lit](https://lit.dev) and bundled with [Rollup](https://rollupjs.org). Source lives in `src/`; the committed `air-quality-card.js` at the repo root is the bundled output.
+
+```bash
+npm install        # install dev deps + lit
+npm run typecheck  # tsc --noEmit (no JS emit, just type checking)
+npm test           # run unit tests for the pure helpers
+npm run build      # produce air-quality-card.js from src/
+npm run build:watch  # rebuild on every save while iterating
+```
+
+CI runs `typecheck`, `build`, and `test` on every PR. The `build` job also fails CI if the committed bundle is out of sync with source.

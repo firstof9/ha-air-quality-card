@@ -103,31 +103,33 @@ export function calcThreshold(
   return                    { label: 'V.HIGH', color: 'var(--air-quality-card-unhealthy-color, #fca5a5)',    text: 'var(--air-quality-card-unhealthy-text, #dc2626)',    pct: 100 };
 }
 
-// Computes the calculated-score-mode headline state from the three
-// contributing pollutants. Each pollutant contributes a penalty fraction
-// in [0, 1] times its weight. Missing pollutants are dropped and the
-// remaining weights renormalize to 100, so a partial sensor set still
-// spans 0-100 instead of getting an artificial ceiling.
+// Computes the calculated-score-mode headline state from the available
+// pollutants. Instead of averaging, we use the "Max Sub-Index" model (like
+// US EPA AQI or Plume Labs): the pollutant with the highest health risk
+// defines the entire score.
 //
 // Divisor calibration (the value at which a pollutant's penalty saturates):
-//   PM2.5 75 ug/m3 -> US EPA "Unhealthy for Sensitive Groups" boundary
-//   VOC   500      -> Sensirion VOC Index ceiling (full scale)
-//   CO2   2200 ppm above 400 baseline -> Harvard COGfx cognitive impact threshold
+//   PM2.5 75 ug/m3  -> US EPA "Unhealthy" boundary
+//   PM10  150 ug/m3 -> US EPA "Unhealthy" boundary
+//   VOC   300 Index -> Sensirion Index "Elevated" mark
+//   CO2   1600 ppm above 400 baseline -> Harvard COGfx cognitive impact threshold
 //
 // Returns: { score, label, color, text, advice, pct } where score is null
 // when no pollutants are present (empty-state).
 interface ComputeScoreInput {
   pm25?: number | null;
+  pm10?: number | null;
   voc?: number | null;
   co2?: number | null;
 }
 
-export function computeScore({ pm25, voc, co2 }: ComputeScoreInput): ScoreResult {
+export function computeScore({ pm25, pm10, voc, co2 }: ComputeScoreInput): ScoreResult {
   const pollutants = [
-    { value: pm25, divisor: 75,   weight: 40 },
-    { value: voc,  divisor: 500,  weight: 25 },
-    { value: co2 != null ? co2 - 400 : null, divisor: 2200, weight: 35 },
-  ].filter((p): p is { value: number; divisor: number; weight: number } => p.value != null);
+    { value: pm25, limit: 75 },
+    { value: pm10, limit: 150 },
+    { value: voc,  limit: 300 },
+    { value: co2 != null ? co2 - 400 : null, limit: 1600 },
+  ].filter((p): p is { value: number; limit: number } => p.value != null);
 
   if (pollutants.length === 0) {
     return {
@@ -135,17 +137,19 @@ export function computeScore({ pm25, voc, co2 }: ComputeScoreInput): ScoreResult
       label: 'No data',
       color: 'var(--air-quality-card-no-data-color, #9ca3af)',
       text: 'var(--secondary-text-color)',
-      advice: 'Configure PM2.5, VOC, or CO₂ sensors to see a calculated score.',
+      advice: 'Configure PM2.5, PM10, VOC, or CO₂ sensors to see a calculated score.',
       pct: 0,
     };
   }
 
-  const totalWeight = pollutants.reduce((s, p) => s + p.weight, 0);
-  const totalPenalty = pollutants.reduce((s, p) => {
-    const frac = Math.min(1, Math.max(0, p.value / p.divisor));
-    return s + frac * (p.weight / totalWeight) * 100;
-  }, 0);
-  const score = Math.min(100, Math.max(0, Math.round(100 - totalPenalty)));
+  // Calculate sub-indices (0-100%) for each pollutant.
+  // The worst (max) sub-index defines the overall score.
+  const subIndices = pollutants.map(p => {
+    return Math.min(100, Math.max(0, (p.value / p.limit) * 100));
+  });
+
+  const maxSubIndex = Math.max(...subIndices);
+  const score = Math.round(100 - maxSubIndex);
   const band = SCORE_BANDS.find(b => score >= b.min)!;
 
   return {

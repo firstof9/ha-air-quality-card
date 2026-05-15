@@ -21,7 +21,7 @@ import type {
 
 import './editor.js';
 
-const VERSION = '0.1.0';
+const VERSION = '0.1.1';
 
 console.info(
   `%c  AIR-QUALITY-CARD  %c  Version ${VERSION}  `,

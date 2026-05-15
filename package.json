@@ -1,6 +1,6 @@
 {
   "name": "ha-air-quality-card",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Home Assistant Air Quality Card",
   "main": "air-quality-card.js",
   "type": "module",

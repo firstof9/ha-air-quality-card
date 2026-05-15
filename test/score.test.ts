@@ -111,6 +111,13 @@ describe('computeScore', () => {
     assert.equal(r.score, 60);
     assert.equal(r.label, 'Moderate');
   });
+
+  test('NOX alone at 200 µg/m³ saturates the penalty (score 0)', () => {
+    // 200 is the NOX limit.
+    const r = computeScore({ nox: 200 });
+    assert.equal(r.score, 0);
+    assert.equal(r.label, 'Bad');
+  });
 });
 
 describe('calcThreshold', () => {

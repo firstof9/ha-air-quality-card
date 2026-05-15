@@ -20,6 +20,7 @@ export const POLLUTANT_THRESHOLDS = {
   voc_ppb:   { good: 250, mod: 500,  high: 1000 }, // ppb
   voc_ugm3:  { good: 300, mod: 600,  high: 1500 }, // ug/m3
   co2:  { good: 800, mod: 1200, high: 2000 },
+  nox:  { good: 50,  mod: 100,  high: 200 },
 } as const;
 
 export function getVocThresholds(unit?: string) {
@@ -69,6 +70,7 @@ export const STRINGS: Record<string, Record<string, unknown>> = {
       vocHigh:     'VOCs detected',
       co2High:     'CO2 high - open a window',
       co2VeryHigh: 'CO2 very high - ventilate',
+      noxHigh:     'High Nitrogen Oxides detected',
     },
   },
 };
@@ -122,15 +124,17 @@ interface ComputeScoreInput {
   voc?: number | null;
   voc_unit?: string;
   co2?: number | null;
+  nox?: number | null;
 }
 
-export function computeScore({ pm25, pm10, voc, voc_unit, co2 }: ComputeScoreInput): ScoreResult {
+export function computeScore({ pm25, pm10, voc, voc_unit, co2, nox }: ComputeScoreInput): ScoreResult {
   const vocThresholds = getVocThresholds(voc_unit);
   const pollutants = [
     { value: pm25, limit: 75 },
     { value: pm10, limit: 150 },
     { value: voc,  limit: vocThresholds.high },
     { value: co2 != null ? co2 - 400 : null, limit: 1600 },
+    { value: nox,  limit: 200 },
   ].filter((p): p is { value: number; limit: number } => p.value != null);
 
   if (pollutants.length === 0) {

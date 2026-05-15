@@ -30,6 +30,7 @@ export interface AirQualityCardConfig {
   pm10_entity?: string;
   voc_entity?: string;
   co2_entity?: string;
+  nox_entity?: string;
 }
 
 export interface ThresholdResult {

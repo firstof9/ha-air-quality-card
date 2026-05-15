@@ -9,6 +9,7 @@ import {
   calcThreshold,
   computeScore,
   getVocThresholds,
+  getNoxThresholds,
   translate,
 } from './helpers.js';
 import { cardStyles } from './styles.js';
@@ -231,6 +232,7 @@ export class AirQualityCard extends LitElement {
     const co2   = this._safeNum(config.co2_entity);
     const temp  = this._safeNum(config.temp_entity);
     const humid = this._safeNum(config.humid_entity);
+    const nox   = this._safeNum(config.nox_entity);
 
     const tempUnit  = this._getUnit(config.temp_entity, '°C');
     const humidUnit = this._getUnit(config.humid_entity, '%');
@@ -240,6 +242,7 @@ export class AirQualityCard extends LitElement {
     const pm10Unit  = this._getUnit(config.pm10_entity, 'µg/m³');
     const vocUnit   = this._getUnit(config.voc_entity, 'index');
     const co2Unit   = this._getUnit(config.co2_entity, 'ppm');
+    const noxUnit   = this._getUnit(config.nox_entity, 'index');
 
     // --- Headline state ---
     const radius = 42;
@@ -260,7 +263,7 @@ export class AirQualityCard extends LitElement {
       const aqiPct = Math.min(Math.max(aqi, 0) / 500, 1);
       dashOffset = circ - aqiPct * circ;
     } else {
-      const result = computeScore({ pm25, pm10, voc, voc_unit: vocUnit, co2 });
+      const result = computeScore({ pm25, pm10, voc, voc_unit: vocUnit, co2, nox, nox_unit: noxUnit });
       displayValue = result.score == null ? '--' : result.score;
       ringTopText = this.t('ring.score');
       ringColor = result.color;
@@ -268,15 +271,6 @@ export class AirQualityCard extends LitElement {
       displayLabel = result.label;
       advice = result.advice;
       dashOffset = circ - result.pct * circ;
-    }
-
-    // Pollutant override advice, only when headline is benign so we
-    // don't downgrade an Unhealthy/Hazardous warning.
-    const benign = displayLabel === 'Good' || displayLabel === 'Moderate';
-    if (benign) {
-      if (voc != null && voc > 200) advice = this.t('advice.vocHigh');
-      if (co2 != null && co2 > 1000) advice = this.t('advice.co2High');
-      if (co2 != null && co2 > 1500) advice = this.t('advice.co2VeryHigh');
     }
 
     // --- Pollutant tile thresholds ---
@@ -288,6 +282,18 @@ export class AirQualityCard extends LitElement {
     const vocT = getVocThresholds(vocUnit);
     const vocS  = calcThreshold(voc,  vocT.good,  vocT.mod,  vocT.high);
     const co2S  = calcThreshold(co2,  T.co2.good,  T.co2.mod,  T.co2.high);
+    const noxT  = getNoxThresholds(noxUnit);
+    const noxS  = calcThreshold(nox,  noxT.good,  noxT.mod,  noxT.high);
+
+    // Pollutant override advice, only when headline is benign so we
+    // don't downgrade an Unhealthy/Hazardous warning.
+    const benign = displayLabel === 'Good' || displayLabel === 'Moderate';
+    if (benign) {
+      if (voc != null && voc > 200) advice = this.t('advice.vocHigh');
+      if (co2 != null && co2 > 1000) advice = this.t('advice.co2High');
+      if (co2 != null && co2 > 1500) advice = this.t('advice.co2VeryHigh');
+      if (nox != null && nox > noxT.mod) advice = this.t('advice.noxHigh');
+    }
 
     const headlineUnit = hasAqi
       ? aqiStateObj!.attributes.unit_of_measurement || 'AQI'
@@ -355,9 +361,9 @@ export class AirQualityCard extends LitElement {
 
         ${this._expanded
           ? this._renderBottom({
-              pm1, pm25, pm4, pm10, voc, co2,
-              pm1Unit, pm25Unit, pm4Unit, pm10Unit, vocUnit, co2Unit,
-              pm1S, pm25S, pm4S, pm10S, vocS, co2S,
+              pm1, pm25, pm4, pm10, voc, co2, nox,
+              pm1Unit, pm25Unit, pm4Unit, pm10Unit, vocUnit, co2Unit, noxUnit,
+              pm1S, pm25S, pm4S, pm10S, vocS, co2S, noxS,
             })
           : nothing}
       </ha-card>
@@ -507,11 +513,11 @@ export class AirQualityCard extends LitElement {
 
   private _renderBottom(d: {
     pm1: number | null; pm25: number | null; pm4: number | null; pm10: number | null;
-    voc: number | null; co2: number | null;
+    voc: number | null; co2: number | null; nox: number | null;
     pm1Unit: string; pm25Unit: string; pm4Unit: string; pm10Unit: string;
-    vocUnit: string; co2Unit: string;
+    vocUnit: string; co2Unit: string; noxUnit: string;
     pm1S: ThresholdResult; pm25S: ThresholdResult; pm4S: ThresholdResult;
-    pm10S: ThresholdResult; vocS: ThresholdResult; co2S: ThresholdResult;
+    pm10S: ThresholdResult; vocS: ThresholdResult; co2S: ThresholdResult; noxS: ThresholdResult;
   }): TemplateResult {
     const tile = (name: string, value: number | null, unit: string, st: ThresholdResult) => html`
       <div
@@ -549,6 +555,7 @@ export class AirQualityCard extends LitElement {
         </div>
         <div class="tile-grid">
           ${tile('VOC', d.voc, d.vocUnit, d.vocS)}
+          ${tile('NOₓ', d.nox, d.noxUnit, d.noxS)}
           ${tile('CO₂', d.co2, d.co2Unit, d.co2S)}
         </div>
       </div>

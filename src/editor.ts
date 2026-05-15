@@ -22,6 +22,7 @@ const SCHEMA: HaFormSchemaEntry[] = [
   { name: 'pm10_entity',      label: 'PM10 Sensor',           helper: 'Drives the score when PM10 levels are the worst pollutant.', selector: { entity: { domain: 'sensor', device_class: 'pm10' } } },
   { name: 'voc_entity',       label: 'VOC Index Sensor',      helper: 'Sensirion VOC Index (0-500 scale). Drives the score when VOCs are the worst pollutant.', selector: { entity: { domain: 'sensor' } } },
   { name: 'co2_entity',       label: 'CO2 Sensor (ppm)',      helper: 'Drives the score when CO2 is the worst pollutant (impacts cognitive function above 2000 ppm).', selector: { entity: { domain: 'sensor', device_class: 'carbon_dioxide' } } },
+  { name: 'nox_entity',       label: 'NOX Sensor',            helper: 'Nitrogen Oxides (NO2/NOX). Drives the score when NOX levels are high.', selector: { entity: { domain: 'sensor' } } },
 ];
 
 @customElement('air-quality-card-editor')
@@ -34,6 +35,7 @@ export class AirQualityCardEditor extends LitElement {
   }
 
   private _cachedVocEntities?: string[];
+  private _cachedNoxEntities?: string[];
   private _cachedHassStates?: HomeAssistant['states'];
   private _cachedSchema?: HaFormSchemaEntry[];
 
@@ -48,6 +50,20 @@ export class AirQualityCardEditor extends LitElement {
         return eid.toLowerCase().includes('voc') || friendlyName.includes('voc');
       });
 
+      this._cachedNoxEntities = Object.keys(this.hass.states).filter((eid) => {
+        if (!eid.startsWith('sensor.')) return false;
+        const stateObj = this.hass!.states[eid];
+        const friendlyName = stateObj.attributes.friendly_name?.toLowerCase() || '';
+        const dc = (stateObj.attributes.device_class as string | undefined)?.toLowerCase() || '';
+        return (
+          eid.toLowerCase().includes('nox') ||
+          eid.toLowerCase().includes('no2') ||
+          friendlyName.includes('nox') ||
+          friendlyName.includes('no2') ||
+          dc.includes('nitrogen')
+        );
+      });
+
       this._cachedSchema = SCHEMA.map((s) => {
         if (s.name === 'voc_entity') {
           return {
@@ -56,6 +72,17 @@ export class AirQualityCardEditor extends LitElement {
               entity: {
                 ...s.selector.entity as Record<string, unknown>,
                 include_entities: this._cachedVocEntities,
+              },
+            },
+          };
+        }
+        if (s.name === 'nox_entity') {
+          return {
+            ...s,
+            selector: {
+              entity: {
+                ...s.selector.entity as Record<string, unknown>,
+                include_entities: this._cachedNoxEntities,
               },
             },
           };

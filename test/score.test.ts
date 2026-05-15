@@ -111,6 +111,24 @@ describe('computeScore', () => {
     assert.equal(r.score, 60);
     assert.equal(r.label, 'Moderate');
   });
+
+  test('NOX Index (default) uses Index thresholds', () => {
+    // 300 is High for Index -> 100 penalty -> 0 Bad
+    const r = computeScore({ nox: 300 });
+    assert.equal(r.score, 0);
+  });
+
+  test('NOX µg/m³ uses WHO thresholds', () => {
+    // 100 is Moderate for µg/m³ (limit 200) -> 50 penalty -> 50 Moderate
+    const r = computeScore({ nox: 100, nox_unit: 'µg/m³' });
+    assert.equal(r.score, 50);
+  });
+
+  test('NOX ppm uses ppm thresholds', () => {
+    // 0.2 ppm is the High limit for ppm -> 100 penalty -> 0 Bad
+    const r = computeScore({ nox: 0.2, nox_unit: 'ppm' });
+    assert.equal(r.score, 0);
+  });
 });
 
 describe('calcThreshold', () => {

@@ -54,7 +54,7 @@ export class AirQualityCardEditor extends LitElement {
         if (!eid.startsWith('sensor.')) return false;
         const stateObj = this.hass!.states[eid];
         const friendlyName = stateObj.attributes.friendly_name?.toLowerCase() || '';
-        const dc = stateObj.attributes.device_class?.toLowerCase() || '';
+        const dc = (stateObj.attributes.device_class as string | undefined)?.toLowerCase() || '';
         return (
           eid.toLowerCase().includes('nox') ||
           eid.toLowerCase().includes('no2') ||

@@ -241,7 +241,7 @@ export class AirQualityCard extends LitElement {
     const pm10Unit  = this._getUnit(config.pm10_entity, 'µg/m³');
     const vocUnit   = this._getUnit(config.voc_entity, 'index');
     const co2Unit   = this._getUnit(config.co2_entity, 'ppm');
-    const noxUnit   = this._getUnit(config.nox_entity, 'µg/m³');
+    const noxUnit   = this._getUnit(config.nox_entity, 'index');
 
     // --- Headline state ---
     const radius = 42;

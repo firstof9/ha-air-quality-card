@@ -123,6 +123,12 @@ describe('computeScore', () => {
     const r = computeScore({ nox: 100, nox_unit: 'µg/m³' });
     assert.equal(r.score, 50);
   });
+
+  test('NOX ppm uses ppm thresholds', () => {
+    // 0.2 ppm is the High limit for ppm -> 100 penalty -> 0 Bad
+    const r = computeScore({ nox: 0.2, nox_unit: 'ppm' });
+    assert.equal(r.score, 0);
+  });
 });
 
 describe('calcThreshold', () => {

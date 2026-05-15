@@ -272,17 +272,6 @@ export class AirQualityCard extends LitElement {
       dashOffset = circ - result.pct * circ;
     }
 
-    // Pollutant override advice, only when headline is benign so we
-    // don't downgrade an Unhealthy/Hazardous warning.
-    const benign = displayLabel === 'Good' || displayLabel === 'Moderate';
-    if (benign) {
-      if (voc != null && voc > 200) advice = this.t('advice.vocHigh');
-      if (co2 != null && co2 > 1000) advice = this.t('advice.co2High');
-      if (co2 != null && co2 > 1500) advice = this.t('advice.co2VeryHigh');
-      const noxHighThreshold = noxUnit === 'index' ? 200 : 100;
-      if (nox != null && nox > noxHighThreshold) advice = this.t('advice.noxHigh');
-    }
-
     // --- Pollutant tile thresholds ---
     const T = POLLUTANT_THRESHOLDS;
     const pm1S  = calcThreshold(pm1,  T.pm1.good,  T.pm1.mod,  T.pm1.high);
@@ -294,6 +283,16 @@ export class AirQualityCard extends LitElement {
     const co2S  = calcThreshold(co2,  T.co2.good,  T.co2.mod,  T.co2.high);
     const noxT  = getNoxThresholds(noxUnit);
     const noxS  = calcThreshold(nox,  noxT.good,  noxT.mod,  noxT.high);
+
+    // Pollutant override advice, only when headline is benign so we
+    // don't downgrade an Unhealthy/Hazardous warning.
+    const benign = displayLabel === 'Good' || displayLabel === 'Moderate';
+    if (benign) {
+      if (voc != null && voc > 200) advice = this.t('advice.vocHigh');
+      if (co2 != null && co2 > 1000) advice = this.t('advice.co2High');
+      if (co2 != null && co2 > 1500) advice = this.t('advice.co2VeryHigh');
+      if (nox != null && nox > noxT.mod) advice = this.t('advice.noxHigh');
+    }
 
     const headlineUnit = hasAqi
       ? aqiStateObj!.attributes.unit_of_measurement || 'AQI'

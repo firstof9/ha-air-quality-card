@@ -22,6 +22,7 @@ export const POLLUTANT_THRESHOLDS = {
   co2:  { good: 800, mod: 1200, high: 2000 },
   nox_index: { good: 100, mod: 200,  high: 300 },
   nox_ugm3:  { good: 50,  mod: 100,  high: 200 },
+  nox_ppm:   { good: 0.05, mod: 0.1,  high: 0.2 },
 } as const;
 
 export function getVocThresholds(unit?: string) {
@@ -34,6 +35,7 @@ export function getVocThresholds(unit?: string) {
 export function getNoxThresholds(unit?: string) {
   const u = (unit ?? '').toLowerCase();
   if (u.includes('m³') || u.includes('m3')) return POLLUTANT_THRESHOLDS.nox_ugm3;
+  if (u.includes('ppm')) return POLLUTANT_THRESHOLDS.nox_ppm;
   return POLLUTANT_THRESHOLDS.nox_index;
 }
 

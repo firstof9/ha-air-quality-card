@@ -9,6 +9,7 @@ import {
   calcThreshold,
   computeScore,
   getVocThresholds,
+  getNoxThresholds,
   translate,
 } from './helpers.js';
 import { cardStyles } from './styles.js';

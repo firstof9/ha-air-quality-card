@@ -1,5 +1,11 @@
 # Air Quality Card
 
+[![GitHub Release](https://img.shields.io/github/v/release/firstof9/ha-air-quality-card?style=for-the-badge)](https://github.com/firstof9/ha-air-quality-card/releases)
+[![GitHub Downloads](https://img.shields.io/github/downloads/firstof9/ha-air-quality-card/total?style=for-the-badge)](https://github.com/firstof9/ha-air-quality-card/releases)
+[![CI](https://img.shields.io/github/actions/workflow/status/firstof9/ha-air-quality-card/lint.yml?branch=main&label=CI&style=for-the-badge)](https://github.com/firstof9/ha-air-quality-card/actions/workflows/lint.yml)
+[![HACS Badge](https://img.shields.io/badge/HACS-Custom-orange.svg?style=for-the-badge)](https://github.com/hacs/integration)
+[![License](https://img.shields.io/github/license/firstof9/ha-air-quality-card?style=for-the-badge)](https://github.com/firstof9/ha-air-quality-card/blob/main/LICENSE)
+
 A modern, highly customizable air quality card for Home Assistant with support for multiple pollutants, climate trends, and an interactive expand/collapse feature.
 
 ## Screenshots

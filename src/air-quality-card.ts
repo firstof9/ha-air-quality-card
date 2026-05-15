@@ -262,7 +262,7 @@ export class AirQualityCard extends LitElement {
       const aqiPct = Math.min(Math.max(aqi, 0) / 500, 1);
       dashOffset = circ - aqiPct * circ;
     } else {
-      const result = computeScore({ pm25, pm10, voc, voc_unit: vocUnit, co2, nox });
+      const result = computeScore({ pm25, pm10, voc, voc_unit: vocUnit, co2, nox, nox_unit: noxUnit });
       displayValue = result.score == null ? '--' : result.score;
       ringTopText = this.t('ring.score');
       ringColor = result.color;
@@ -279,7 +279,8 @@ export class AirQualityCard extends LitElement {
       if (voc != null && voc > 200) advice = this.t('advice.vocHigh');
       if (co2 != null && co2 > 1000) advice = this.t('advice.co2High');
       if (co2 != null && co2 > 1500) advice = this.t('advice.co2VeryHigh');
-      if (nox != null && nox > 100) advice = this.t('advice.noxHigh');
+      const noxHighThreshold = noxUnit === 'index' ? 200 : 100;
+      if (nox != null && nox > noxHighThreshold) advice = this.t('advice.noxHigh');
     }
 
     // --- Pollutant tile thresholds ---
@@ -291,7 +292,8 @@ export class AirQualityCard extends LitElement {
     const vocT = getVocThresholds(vocUnit);
     const vocS  = calcThreshold(voc,  vocT.good,  vocT.mod,  vocT.high);
     const co2S  = calcThreshold(co2,  T.co2.good,  T.co2.mod,  T.co2.high);
-    const noxS  = calcThreshold(nox,  T.nox.good,  T.nox.mod,  T.nox.high);
+    const noxT  = getNoxThresholds(noxUnit);
+    const noxS  = calcThreshold(nox,  noxT.good,  noxT.mod,  noxT.high);
 
     const headlineUnit = hasAqi
       ? aqiStateObj!.attributes.unit_of_measurement || 'AQI'

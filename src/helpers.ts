@@ -20,7 +20,8 @@ export const POLLUTANT_THRESHOLDS = {
   voc_ppb:   { good: 250, mod: 500,  high: 1000 }, // ppb
   voc_ugm3:  { good: 300, mod: 600,  high: 1500 }, // ug/m3
   co2:  { good: 800, mod: 1200, high: 2000 },
-  nox:  { good: 50,  mod: 100,  high: 200 },
+  nox_index: { good: 100, mod: 200,  high: 300 },
+  nox_ugm3:  { good: 50,  mod: 100,  high: 200 },
 } as const;
 
 export function getVocThresholds(unit?: string) {
@@ -28,6 +29,12 @@ export function getVocThresholds(unit?: string) {
   if (u.includes('ppb')) return POLLUTANT_THRESHOLDS.voc_ppb;
   if (u.includes('m³') || u.includes('m3')) return POLLUTANT_THRESHOLDS.voc_ugm3;
   return POLLUTANT_THRESHOLDS.voc_index;
+}
+
+export function getNoxThresholds(unit?: string) {
+  const u = (unit ?? '').toLowerCase();
+  if (u.includes('m³') || u.includes('m3')) return POLLUTANT_THRESHOLDS.nox_ugm3;
+  return POLLUTANT_THRESHOLDS.nox_index;
 }
 
 // US EPA AirNow AQI bands (https://www.airnow.gov/aqi/aqi-basics/).
@@ -125,16 +132,18 @@ interface ComputeScoreInput {
   voc_unit?: string;
   co2?: number | null;
   nox?: number | null;
+  nox_unit?: string;
 }
 
-export function computeScore({ pm25, pm10, voc, voc_unit, co2, nox }: ComputeScoreInput): ScoreResult {
+export function computeScore({ pm25, pm10, voc, voc_unit, co2, nox, nox_unit }: ComputeScoreInput): ScoreResult {
   const vocThresholds = getVocThresholds(voc_unit);
+  const noxThresholds = getNoxThresholds(nox_unit);
   const pollutants = [
     { value: pm25, limit: 75 },
     { value: pm10, limit: 150 },
     { value: voc,  limit: vocThresholds.high },
     { value: co2 != null ? co2 - 400 : null, limit: 1600 },
-    { value: nox,  limit: 200 },
+    { value: nox,  limit: noxThresholds.high },
   ].filter((p): p is { value: number; limit: number } => p.value != null);
 
   if (pollutants.length === 0) {

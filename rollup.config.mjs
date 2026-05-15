@@ -18,5 +18,14 @@ export default {
       compilerOptions: { noEmit: false, declaration: false },
     }),
     !dev && terser({ format: { comments: false } }),
+    {
+      name: 'patch-lit-html',
+      renderChunk(code) {
+        return {
+          code: code.replace(/\/-->\/g/g, '/--!?>/g'),
+          map: null,
+        };
+      },
+    },
   ].filter(Boolean),
 };

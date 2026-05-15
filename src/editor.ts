@@ -33,29 +33,38 @@ export class AirQualityCardEditor extends LitElement {
     this._config = config;
   }
 
+  private _cachedVocEntities?: string[];
+  private _cachedHassStates?: HomeAssistant['states'];
+  private _cachedSchema?: HaFormSchemaEntry[];
+
   private get _schema(): HaFormSchemaEntry[] {
     if (!this.hass) return SCHEMA;
 
-    const vocEntities = Object.keys(this.hass.states).filter((eid) => {
-      if (!eid.startsWith('sensor.')) return false;
-      const friendlyName = this.hass!.states[eid].attributes.friendly_name?.toLowerCase() || '';
-      return eid.toLowerCase().includes('voc') || friendlyName.includes('voc');
-    });
+    if (this.hass.states !== this._cachedHassStates) {
+      this._cachedHassStates = this.hass.states;
+      this._cachedVocEntities = Object.keys(this.hass.states).filter((eid) => {
+        if (!eid.startsWith('sensor.')) return false;
+        const friendlyName = this.hass!.states[eid].attributes.friendly_name?.toLowerCase() || '';
+        return eid.toLowerCase().includes('voc') || friendlyName.includes('voc');
+      });
 
-    return SCHEMA.map((s) => {
-      if (s.name === 'voc_entity') {
-        return {
-          ...s,
-          selector: {
-            entity: {
-              ...s.selector.entity as Record<string, unknown>,
-              include_entities: vocEntities,
+      this._cachedSchema = SCHEMA.map((s) => {
+        if (s.name === 'voc_entity') {
+          return {
+            ...s,
+            selector: {
+              entity: {
+                ...s.selector.entity as Record<string, unknown>,
+                include_entities: this._cachedVocEntities,
+              },
             },
-          },
-        };
-      }
-      return s;
-    });
+          };
+        }
+        return s;
+      });
+    }
+
+    return this._cachedSchema || SCHEMA;
   }
 
   protected override render(): TemplateResult {

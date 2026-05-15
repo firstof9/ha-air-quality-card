@@ -20,7 +20,7 @@ const SCHEMA: HaFormSchemaEntry[] = [
   { name: 'pm25_entity',      label: 'PM2.5 Sensor',          helper: 'Drives the score when PM2.5 levels are the worst pollutant.', selector: { entity: { domain: 'sensor', device_class: 'pm25' } } },
   { name: 'pm4_entity',       label: 'PM4.0 Sensor',          helper: 'Display only - does not contribute to the calculated score.', selector: { entity: { domain: 'sensor' } } },
   { name: 'pm10_entity',      label: 'PM10 Sensor',           helper: 'Drives the score when PM10 levels are the worst pollutant.', selector: { entity: { domain: 'sensor', device_class: 'pm10' } } },
-  { name: 'voc_entity',       label: 'VOC Index Sensor',      helper: 'Sensirion VOC Index (0-500 scale). Drives the score when VOCs are the worst pollutant.', selector: { entity: { domain: 'sensor', device_class: 'volatile_organic_compounds' } } },
+  { name: 'voc_entity',       label: 'VOC Index Sensor',      helper: 'Sensirion VOC Index (0-500 scale). Drives the score when VOCs are the worst pollutant.', selector: { entity: { domain: 'sensor' } } },
   { name: 'co2_entity',       label: 'CO2 Sensor (ppm)',      helper: 'Drives the score when CO2 is the worst pollutant (impacts cognitive function above 2000 ppm).', selector: { entity: { domain: 'sensor', device_class: 'carbon_dioxide' } } },
 ];
 
@@ -33,13 +33,38 @@ export class AirQualityCardEditor extends LitElement {
     this._config = config;
   }
 
+  private get _schema(): HaFormSchemaEntry[] {
+    if (!this.hass) return SCHEMA;
+
+    const vocEntities = Object.keys(this.hass.states).filter((eid) => {
+      if (!eid.startsWith('sensor.')) return false;
+      const friendlyName = this.hass!.states[eid].attributes.friendly_name?.toLowerCase() || '';
+      return eid.toLowerCase().includes('voc') || friendlyName.includes('voc');
+    });
+
+    return SCHEMA.map((s) => {
+      if (s.name === 'voc_entity') {
+        return {
+          ...s,
+          selector: {
+            entity: {
+              ...s.selector.entity as Record<string, unknown>,
+              include_entities: vocEntities,
+            },
+          },
+        };
+      }
+      return s;
+    });
+  }
+
   protected override render(): TemplateResult {
     if (!this.hass || !this._config) return html``;
     return html`
       <ha-form
         .hass=${this.hass}
         .data=${this._config}
-        .schema=${SCHEMA}
+        .schema=${this._schema}
         .computeLabel=${(s: HaFormSchemaEntry) => s.label || s.name}
         .computeHelper=${(s: HaFormSchemaEntry) => s.helper || ''}
         @value-changed=${this._valueChanged}
@@ -57,3 +82,4 @@ export class AirQualityCardEditor extends LitElement {
     );
   }
 }
+

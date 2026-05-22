@@ -289,7 +289,7 @@ export class AirQualityCard extends LitElement {
     // don't downgrade an Unhealthy/Hazardous warning.
     const benign = displayLabel === 'Good' || displayLabel === 'Moderate';
     if (benign) {
-      if (voc != null && voc > 200) advice = this.t('advice.vocHigh');
+      if (voc != null && voc > vocT.mod) advice = this.t('advice.vocHigh');
       if (co2 != null && co2 > 1000) advice = this.t('advice.co2High');
       if (co2 != null && co2 > 1500) advice = this.t('advice.co2VeryHigh');
       if (nox != null && nox > noxT.mod) advice = this.t('advice.noxHigh');

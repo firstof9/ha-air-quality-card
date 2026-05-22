@@ -93,9 +93,14 @@ describe('computeScore', () => {
   });
 
   test('VOC Index (default/unknown unit) uses Index thresholds', () => {
-    // 300 is the limit for Index -> Bad (score 0)
-    const r = computeScore({ voc: 300 });
+    // 350 is the limit for Index -> Bad (score 0)
+    const r = computeScore({ voc: 350 });
     assert.equal(r.score, 0);
+  });
+
+  test('VOC Index at 100 baseline yields perfect score', () => {
+    const r = computeScore({ voc: 100 });
+    assert.equal(r.score, 100);
   });
 
   test('VOC ppb uses ppb thresholds', () => {
@@ -113,9 +118,14 @@ describe('computeScore', () => {
   });
 
   test('NOX Index (default) uses Index thresholds', () => {
-    // 300 is High for Index -> 100 penalty -> 0 Bad
-    const r = computeScore({ nox: 300 });
+    // 50 is High for Index -> 100 penalty -> 0 Bad
+    const r = computeScore({ nox: 50 });
     assert.equal(r.score, 0);
+  });
+
+  test('NOX Index at 1 baseline yields perfect score', () => {
+    const r = computeScore({ nox: 1 });
+    assert.equal(r.score, 100);
   });
 
   test('NOX µg/m³ uses WHO thresholds', () => {

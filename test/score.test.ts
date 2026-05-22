@@ -93,9 +93,14 @@ describe('computeScore', () => {
   });
 
   test('VOC Index (default/unknown unit) uses Index thresholds', () => {
-    // 300 is the limit for Index -> Bad (score 0)
-    const r = computeScore({ voc: 300 });
+    // 350 is the limit for Index -> Bad (score 0)
+    const r = computeScore({ voc: 350 });
     assert.equal(r.score, 0);
+  });
+
+  test('VOC Index at 100 baseline yields perfect score', () => {
+    const r = computeScore({ voc: 100 });
+    assert.equal(r.score, 100);
   });
 
   test('VOC ppb uses ppb thresholds', () => {
@@ -113,9 +118,14 @@ describe('computeScore', () => {
   });
 
   test('NOX Index (default) uses Index thresholds', () => {
-    // 300 is High for Index -> 100 penalty -> 0 Bad
-    const r = computeScore({ nox: 300 });
+    // 50 is High for Index -> 100 penalty -> 0 Bad
+    const r = computeScore({ nox: 50 });
     assert.equal(r.score, 0);
+  });
+
+  test('NOX Index at 1 baseline yields perfect score', () => {
+    const r = computeScore({ nox: 1 });
+    assert.equal(r.score, 100);
   });
 
   test('NOX µg/m³ uses WHO thresholds', () => {
@@ -128,6 +138,68 @@ describe('computeScore', () => {
     // 0.2 ppm is the High limit for ppm -> 100 penalty -> 0 Bad
     const r = computeScore({ nox: 0.2, nox_unit: 'ppm' });
     assert.equal(r.score, 0);
+  });
+
+  test('VOC Index below baseline still yields a perfect score', () => {
+    // voc=50 is below the Sensirion VOC Index 100 baseline; the Math.max(0, …)
+    // floor in computeScore should keep it at 0 penalty.
+    const r = computeScore({ voc: 50 });
+    assert.equal(r.score, 100);
+  });
+
+  test('NOx Index below baseline still yields a perfect score', () => {
+    // nox=0 is below the Sensirion NOx Index 1 baseline.
+    const r = computeScore({ nox: 0 });
+    assert.equal(r.score, 100);
+  });
+
+  test('custom thresholds without an explicit baseline default to 0', () => {
+    // Sensirion's index baselines (100 / 1) only apply when the user has
+    // not supplied their own thresholds; if they pass custom thresholds and
+    // do not opt in to a baseline, the offset is 0.
+    const r = computeScore({
+      voc: 75,
+      voc_thresholds: { good: 50, mod: 100, high: 150 },
+    });
+    // (75 / 150) * 100 = 50 penalty -> score 50
+    assert.equal(r.score, 50);
+  });
+
+  test('custom VOC thresholds and baseline overrides are applied', () => {
+    const r1 = computeScore({
+      voc: 10,
+      voc_thresholds: { good: 50, mod: 100, high: 150 },
+      voc_baseline: 10
+    });
+    assert.equal(r1.score, 100);
+
+    const r2 = computeScore({
+      voc: 80,
+      voc_thresholds: { good: 50, mod: 100, high: 150 },
+      voc_baseline: 10
+    });
+    assert.equal(r2.score, 50);
+  });
+
+  test('custom NOx thresholds and baseline overrides are applied', () => {
+    const r = computeScore({
+      nox: 15,
+      nox_thresholds: { good: 10, mod: 20, high: 30 },
+      nox_baseline: 0
+    });
+    assert.equal(r.score, 50);
+  });
+
+  test('misconfigured baseline >= high does not divide by zero', () => {
+    // baseline equal to high would make the denominator 0; the guard floors
+    // the limit at 1 so the score still resolves to a finite number.
+    const r = computeScore({
+      voc: 200,
+      voc_thresholds: { good: 50, mod: 100, high: 150 },
+      voc_baseline: 150,
+    });
+    assert.ok(Number.isFinite(r.score ?? NaN));
+    assert.equal(r.label, 'Bad');
   });
 });
 
@@ -162,6 +234,34 @@ describe('calcThreshold', () => {
   test('pct never exceeds 100 even within HIGH band', () => {
     const r = calcThreshold(50, 10, 25, 50);
     assert.ok(r.pct <= 100);
+  });
+
+  test('baseline shifts pct: value at baseline yields empty bar', () => {
+    // Sensirion VOC Index thresholds with baseline 100: a reading of 100 is
+    // "GOOD" and the bar should be empty (matching the perfect-score result
+    // from computeScore), not ~29% full.
+    const r = calcThreshold(100, 100, 250, 350, 100);
+    assert.equal(r.label, 'GOOD');
+    assert.equal(r.pct, 0);
+  });
+
+  test('baseline does not change band labels (still absolute)', () => {
+    // Even with a baseline of 100, a value of 250 is still in the "MOD" band
+    // (the labels track the absolute Sensirion bands, only the fill shifts).
+    const r = calcThreshold(250, 100, 250, 350, 100);
+    assert.equal(r.label, 'MOD');
+  });
+
+  test('values below baseline floor pct at 0', () => {
+    const r = calcThreshold(50, 100, 250, 350, 100);
+    assert.equal(r.label, 'GOOD');
+    assert.equal(r.pct, 0);
+  });
+
+  test('baseline default of 0 preserves legacy pct behavior', () => {
+    // Old call sites that pass no baseline keep the original (value/high)*100.
+    const r = calcThreshold(25, 10, 25, 50);
+    assert.equal(r.pct, 50);
   });
 });
 

@@ -10,6 +10,8 @@ import {
   computeScore,
   getVocThresholds,
   getNoxThresholds,
+  getVocDefaultBaseline,
+  getNoxDefaultBaseline,
   translate,
 } from './helpers.js';
 import { cardStyles } from './styles.js';
@@ -263,7 +265,19 @@ export class AirQualityCard extends LitElement {
       const aqiPct = Math.min(Math.max(aqi, 0) / 500, 1);
       dashOffset = circ - aqiPct * circ;
     } else {
-      const result = computeScore({ pm25, pm10, voc, voc_unit: vocUnit, co2, nox, nox_unit: noxUnit });
+      const result = computeScore({
+        pm25,
+        pm10,
+        voc,
+        voc_unit: vocUnit,
+        voc_thresholds: config.voc_thresholds,
+        voc_baseline: config.voc_baseline,
+        co2,
+        nox,
+        nox_unit: noxUnit,
+        nox_thresholds: config.nox_thresholds,
+        nox_baseline: config.nox_baseline,
+      });
       displayValue = result.score == null ? '--' : result.score;
       ringTopText = this.t('ring.score');
       ringColor = result.color;
@@ -279,17 +293,19 @@ export class AirQualityCard extends LitElement {
     const pm25S = calcThreshold(pm25, T.pm25.good, T.pm25.mod, T.pm25.high);
     const pm4S  = calcThreshold(pm4,  T.pm4.good,  T.pm4.mod,  T.pm4.high);
     const pm10S = calcThreshold(pm10, T.pm10.good, T.pm10.mod, T.pm10.high);
-    const vocT = getVocThresholds(vocUnit);
-    const vocS  = calcThreshold(voc,  vocT.good,  vocT.mod,  vocT.high);
+    const vocT = config.voc_thresholds ?? getVocThresholds(vocUnit);
+    const vocB = config.voc_baseline ?? (config.voc_thresholds ? 0 : getVocDefaultBaseline(vocUnit));
+    const vocS  = calcThreshold(voc,  vocT.good,  vocT.mod,  vocT.high, vocB);
     const co2S  = calcThreshold(co2,  T.co2.good,  T.co2.mod,  T.co2.high);
-    const noxT  = getNoxThresholds(noxUnit);
-    const noxS  = calcThreshold(nox,  noxT.good,  noxT.mod,  noxT.high);
+    const noxT  = config.nox_thresholds ?? getNoxThresholds(noxUnit);
+    const noxB  = config.nox_baseline ?? (config.nox_thresholds ? 0 : getNoxDefaultBaseline(noxUnit));
+    const noxS  = calcThreshold(nox,  noxT.good,  noxT.mod,  noxT.high, noxB);
 
     // Pollutant override advice, only when headline is benign so we
     // don't downgrade an Unhealthy/Hazardous warning.
     const benign = displayLabel === 'Good' || displayLabel === 'Moderate';
     if (benign) {
-      if (voc != null && voc > 200) advice = this.t('advice.vocHigh');
+      if (voc != null && voc > vocT.mod) advice = this.t('advice.vocHigh');
       if (co2 != null && co2 > 1000) advice = this.t('advice.co2High');
       if (co2 != null && co2 > 1500) advice = this.t('advice.co2VeryHigh');
       if (nox != null && nox > noxT.mod) advice = this.t('advice.noxHigh');

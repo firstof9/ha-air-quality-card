@@ -59,6 +59,41 @@ pm10_entity: sensor.living_room_pm10
 # Optional: pm1_entity, pm4_entity, voc_entity, co2_entity, default_expanded
 ```
 
+## Advanced configuration
+
+### Custom VOC / NOx thresholds and baselines
+
+By default the card uses Sensirion's official VOC Index and NOx Index bands when no `unit_of_measurement` indicates ppb / µg/m³ / ppm:
+
+| Pollutant | Band | Good | Moderate | High | Baseline (no-event floor) |
+|---|---|---|---|---|---|
+| VOC Index | `voc_index` | ≤ 100 | ≤ 250 | ≤ 350 | 100 |
+| NOx Index | `nox_index` | ≤ 1 | ≤ 20 | ≤ 50 | 1 |
+
+The baseline is the value the Sensirion adaptive algorithm settles on under "clean" conditions. A reading at the baseline contributes no penalty to the calculated score, so a healthy sensor parks at 100.
+
+If you are using a non-Sensirion sensor, a custom index scale (e.g. 0-5 or 0-100), or you want to retune the bands, override them per card:
+
+```yaml
+type: custom:air-quality-card
+voc_entity: sensor.my_custom_voc
+voc_thresholds:
+  good: 50
+  mod: 100
+  high: 150
+voc_baseline: 10        # optional; defaults to 0 when voc_thresholds is set
+nox_entity: sensor.my_custom_nox
+nox_thresholds:
+  good: 10
+  mod: 20
+  high: 30
+nox_baseline: 0         # optional
+```
+
+When `voc_thresholds` / `nox_thresholds` are provided, the corresponding baseline defaults to `0` (no offset) unless you set `voc_baseline` / `nox_baseline` explicitly. When the thresholds are left at the defaults, the Sensirion-derived baselines (100 / 1) are used automatically.
+
+References: [Sensirion VOC Index for Experts](https://sensirion.com/media/documents/02232963/6294E043/Info_Note_VOC_Index.pdf), [Sensirion NOx Index](https://sensirion.com/media/documents/9F289B95/6294DFFC/Info_Note_NOx_Index.pdf).
+
 ## Theming
 
 The card's band colors are exposed as CSS custom properties so you can override them in your HA theme YAML, in `card_mod`, or via any other CSS injection method.

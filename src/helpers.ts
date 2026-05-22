@@ -16,11 +16,11 @@ export const POLLUTANT_THRESHOLDS = {
   pm25: { good: 12,  mod: 35,   high: 75   },
   pm4:  { good: 20,  mod: 50,   high: 100  },
   pm10: { good: 50,  mod: 150,  high: 250  },
-  voc_index: { good: 100, mod: 200,  high: 300 }, // Sensirion Index
+  voc_index: { good: 100, mod: 250,  high: 350 }, // Sensirion Index adjusted to match official bands
   voc_ppb:   { good: 250, mod: 500,  high: 1000 }, // ppb
   voc_ugm3:  { good: 300, mod: 600,  high: 1500 }, // ug/m3
   co2:  { good: 800, mod: 1200, high: 2000 },
-  nox_index: { good: 100, mod: 200,  high: 300 },
+  nox_index: { good: 1,   mod: 20,   high: 50 },  // NOx Index baseline is 1
   nox_ugm3:  { good: 50,  mod: 100,  high: 200 },
   nox_ppm:   { good: 0.05, mod: 0.1,  high: 0.2 },
 } as const;
@@ -37,6 +37,27 @@ export function getNoxThresholds(unit?: string) {
   if (u.includes('m³') || u.includes('m3')) return POLLUTANT_THRESHOLDS.nox_ugm3;
   if (u.includes('ppm')) return POLLUTANT_THRESHOLDS.nox_ppm;
   return POLLUTANT_THRESHOLDS.nox_index;
+}
+
+// Default baseline ("no event" floor) for a VOC reading, used so that a sensor
+// sitting at its baseline does not penalize the score. Sensirion's VOC Index
+// uses 100 as the 24-hour adaptive baseline; ppb/µg/m³ have no baseline offset.
+// See Sensirion VOC Index for Experts (Application Note).
+export function getVocDefaultBaseline(unit?: string): number {
+  const u = (unit ?? '').toLowerCase();
+  if (u.includes('ppb')) return 0;
+  if (u.includes('m³') || u.includes('m3')) return 0;
+  return 100;
+}
+
+// Default baseline for a NOx reading. Sensirion's NOx Index baselines at 1
+// (any value > 1 indicates a NOx event); ppm/µg/m³ have no baseline offset.
+// See Sensirion NOx Index for Experts (Application Note).
+export function getNoxDefaultBaseline(unit?: string): number {
+  const u = (unit ?? '').toLowerCase();
+  if (u.includes('m³') || u.includes('m3')) return 0;
+  if (u.includes('ppm')) return 0;
+  return 1;
 }
 
 // US EPA AirNow AQI bands (https://www.airnow.gov/aqi/aqi-basics/).
@@ -101,16 +122,25 @@ export function translate(path: string, lang = 'en'): string {
 //   color = bright tint for bar fill, text = readable on both themes.
 // Both routed through CSS custom properties (defaults match the band
 // tables above).
+//
+// Optional `baseline` shifts the *bar fill* so a reading at baseline shows an
+// empty bar (matching the "baseline yields perfect score" semantics in
+// computeScore). Labels still use the absolute thresholds — a VOC Index of
+// 100 is "GOOD" with an empty bar, not a partially filled one.
 export function calcThreshold(
   value: number | null,
   good: number,
   mod: number,
   high: number,
+  baseline = 0,
 ): ThresholdResult {
   if (value == null) return { label: '--',     color: 'var(--divider-color, #444)', text: 'var(--secondary-text-color)', pct: 0 };
-  if (value <= good) return { label: 'GOOD',   color: 'var(--air-quality-card-good-color, #86efac)',         text: 'var(--air-quality-card-good-text, #16a34a)',         pct: Math.min(100, (value / high) * 100) };
-  if (value <= mod)  return { label: 'MOD',    color: 'var(--air-quality-card-moderate-color, #fde68a)',     text: 'var(--air-quality-card-moderate-text, #ca8a04)',     pct: Math.min(100, (value / high) * 100) };
-  if (value <= high) return { label: 'HIGH',   color: 'var(--air-quality-card-unhealthy-sg-color, #fdba74)', text: 'var(--air-quality-card-unhealthy-sg-text, #ea580c)', pct: Math.min(100, (value / high) * 100) };
+  const range = Math.max(1e-9, high - baseline);
+  const adjusted = Math.max(0, value - baseline);
+  const pct = Math.min(100, (adjusted / range) * 100);
+  if (value <= good) return { label: 'GOOD',   color: 'var(--air-quality-card-good-color, #86efac)',         text: 'var(--air-quality-card-good-text, #16a34a)',         pct };
+  if (value <= mod)  return { label: 'MOD',    color: 'var(--air-quality-card-moderate-color, #fde68a)',     text: 'var(--air-quality-card-moderate-text, #ca8a04)',     pct };
+  if (value <= high) return { label: 'HIGH',   color: 'var(--air-quality-card-unhealthy-sg-color, #fdba74)', text: 'var(--air-quality-card-unhealthy-sg-text, #ea580c)', pct };
   return                    { label: 'V.HIGH', color: 'var(--air-quality-card-unhealthy-color, #fca5a5)',    text: 'var(--air-quality-card-unhealthy-text, #dc2626)',    pct: 100 };
 }
 
@@ -122,8 +152,12 @@ export function calcThreshold(
 // Divisor calibration (the value at which a pollutant's penalty saturates):
 //   PM2.5 75 ug/m3  -> US EPA "Unhealthy" boundary
 //   PM10  150 ug/m3 -> US EPA "Unhealthy" boundary
-//   VOC   300 Index -> Sensirion Index "Elevated" mark
+//   VOC Index       -> Sensirion bands above the 100 baseline (high=350)
+//   NOx Index       -> Sensirion bands above the 1 baseline (high=50)
 //   CO2   1600 ppm above 400 baseline -> Harvard COGfx cognitive impact threshold
+//
+// A pollutant value at its baseline contributes a 0% sub-index (no penalty),
+// so a sensor sitting at its baseline yields a perfect score.
 //
 // Returns: { score, label, color, text, advice, pct } where score is null
 // when no pollutants are present (empty-state).
@@ -132,20 +166,49 @@ interface ComputeScoreInput {
   pm10?: number | null;
   voc?: number | null;
   voc_unit?: string;
+  voc_thresholds?: { good: number; mod: number; high: number };
+  voc_baseline?: number;
   co2?: number | null;
   nox?: number | null;
   nox_unit?: string;
+  nox_thresholds?: { good: number; mod: number; high: number };
+  nox_baseline?: number;
 }
 
-export function computeScore({ pm25, pm10, voc, voc_unit, co2, nox, nox_unit }: ComputeScoreInput): ScoreResult {
-  const vocThresholds = getVocThresholds(voc_unit);
-  const noxThresholds = getNoxThresholds(nox_unit);
+export function computeScore({
+  pm25,
+  pm10,
+  voc,
+  voc_unit,
+  voc_thresholds,
+  voc_baseline,
+  co2,
+  nox,
+  nox_unit,
+  nox_thresholds,
+  nox_baseline,
+}: ComputeScoreInput): ScoreResult {
+  const vocT = voc_thresholds ?? getVocThresholds(voc_unit);
+  const noxT = nox_thresholds ?? getNoxThresholds(nox_unit);
+
+  // When the user supplies custom thresholds, only use a Sensirion baseline
+  // if they also explicitly opt in via voc_baseline / nox_baseline. Otherwise
+  // we fall back to the unit-derived default.
+  const vocB = voc_baseline ?? (voc_thresholds ? 0 : getVocDefaultBaseline(voc_unit));
+  const noxB = nox_baseline ?? (nox_thresholds ? 0 : getNoxDefaultBaseline(nox_unit));
+
+  // Guard against misconfiguration where baseline >= high would divide by
+  // zero (or negative) in the sub-index calc. Epsilon is small enough not to
+  // distort legitimate sub-1 limits like NOx ppm (high = 0.2).
+  const vocLimit = Math.max(1e-9, vocT.high - vocB);
+  const noxLimit = Math.max(1e-9, noxT.high - noxB);
+
   const pollutants = [
     { value: pm25, limit: 75 },
     { value: pm10, limit: 150 },
-    { value: voc,  limit: vocThresholds.high },
+    { value: voc != null ? Math.max(0, voc - vocB) : null, limit: vocLimit },
     { value: co2 != null ? co2 - 400 : null, limit: 1600 },
-    { value: nox,  limit: noxThresholds.high },
+    { value: nox != null ? Math.max(0, nox - noxB) : null, limit: noxLimit },
   ].filter((p): p is { value: number; limit: number } => p.value != null);
 
   if (pollutants.length === 0) {

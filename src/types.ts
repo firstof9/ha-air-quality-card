@@ -32,9 +32,9 @@ export interface AirQualityCardConfig {
   co2_entity?: string;
   nox_entity?: string;
   voc_thresholds?: { good: number; mod: number; high: number };
-  voc_index_baseline?: number;
+  voc_baseline?: number;
   nox_thresholds?: { good: number; mod: number; high: number };
-  nox_index_baseline?: number;
+  nox_baseline?: number;
 }
 
 export interface ThresholdResult {

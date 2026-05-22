@@ -263,7 +263,19 @@ export class AirQualityCard extends LitElement {
       const aqiPct = Math.min(Math.max(aqi, 0) / 500, 1);
       dashOffset = circ - aqiPct * circ;
     } else {
-      const result = computeScore({ pm25, pm10, voc, voc_unit: vocUnit, co2, nox, nox_unit: noxUnit });
+      const result = computeScore({
+        pm25,
+        pm10,
+        voc,
+        voc_unit: vocUnit,
+        voc_thresholds: config.voc_thresholds,
+        voc_index_baseline: config.voc_index_baseline,
+        co2,
+        nox,
+        nox_unit: noxUnit,
+        nox_thresholds: config.nox_thresholds,
+        nox_index_baseline: config.nox_index_baseline,
+      });
       displayValue = result.score == null ? '--' : result.score;
       ringTopText = this.t('ring.score');
       ringColor = result.color;
@@ -279,10 +291,10 @@ export class AirQualityCard extends LitElement {
     const pm25S = calcThreshold(pm25, T.pm25.good, T.pm25.mod, T.pm25.high);
     const pm4S  = calcThreshold(pm4,  T.pm4.good,  T.pm4.mod,  T.pm4.high);
     const pm10S = calcThreshold(pm10, T.pm10.good, T.pm10.mod, T.pm10.high);
-    const vocT = getVocThresholds(vocUnit);
+    const vocT = config.voc_thresholds || getVocThresholds(vocUnit);
     const vocS  = calcThreshold(voc,  vocT.good,  vocT.mod,  vocT.high);
     const co2S  = calcThreshold(co2,  T.co2.good,  T.co2.mod,  T.co2.high);
-    const noxT  = getNoxThresholds(noxUnit);
+    const noxT  = config.nox_thresholds || getNoxThresholds(noxUnit);
     const noxS  = calcThreshold(nox,  noxT.good,  noxT.mod,  noxT.high);
 
     // Pollutant override advice, only when headline is benign so we

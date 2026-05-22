@@ -132,29 +132,52 @@ interface ComputeScoreInput {
   pm10?: number | null;
   voc?: number | null;
   voc_unit?: string;
+  voc_thresholds?: { good: number; mod: number; high: number };
+  voc_index_baseline?: number;
   co2?: number | null;
   nox?: number | null;
   nox_unit?: string;
+  nox_thresholds?: { good: number; mod: number; high: number };
+  nox_index_baseline?: number;
 }
 
-export function computeScore({ pm25, pm10, voc, voc_unit, co2, nox, nox_unit }: ComputeScoreInput): ScoreResult {
-  const vocThresholds = getVocThresholds(voc_unit);
-  const noxThresholds = getNoxThresholds(nox_unit);
+export function computeScore({
+  pm25,
+  pm10,
+  voc,
+  voc_unit,
+  voc_thresholds,
+  voc_index_baseline,
+  co2,
+  nox,
+  nox_unit,
+  nox_thresholds,
+  nox_index_baseline,
+}: ComputeScoreInput): ScoreResult {
+  const vocT = voc_thresholds || getVocThresholds(voc_unit);
+  const noxT = nox_thresholds || getNoxThresholds(nox_unit);
 
-  const isVocIndex = vocThresholds === POLLUTANT_THRESHOLDS.voc_index;
-  const isNoxIndex = noxThresholds === POLLUTANT_THRESHOLDS.nox_index;
+  const isVocIndex = vocT === POLLUTANT_THRESHOLDS.voc_index;
+  const vocBaseline = voc_index_baseline !== undefined
+    ? voc_index_baseline
+    : (isVocIndex ? 100 : 0);
+
+  const isNoxIndex = noxT === POLLUTANT_THRESHOLDS.nox_index;
+  const noxBaseline = nox_index_baseline !== undefined
+    ? nox_index_baseline
+    : (isNoxIndex ? 1 : 0);
 
   const pollutants = [
     { value: pm25, limit: 75 },
     { value: pm10, limit: 150 },
     {
-      value: voc != null ? (isVocIndex ? Math.max(0, voc - 100) : voc) : null,
-      limit: isVocIndex ? vocThresholds.high - 100 : vocThresholds.high,
+      value: voc != null ? (vocBaseline > 0 ? Math.max(0, voc - vocBaseline) : voc) : null,
+      limit: vocBaseline > 0 ? vocT.high - vocBaseline : vocT.high,
     },
     { value: co2 != null ? co2 - 400 : null, limit: 1600 },
     {
-      value: nox != null ? (isNoxIndex ? Math.max(0, nox - 1) : nox) : null,
-      limit: isNoxIndex ? noxThresholds.high - 1 : noxThresholds.high,
+      value: nox != null ? (noxBaseline > 0 ? Math.max(0, nox - noxBaseline) : nox) : null,
+      limit: noxBaseline > 0 ? noxT.high - noxBaseline : noxT.high,
     },
   ].filter((p): p is { value: number; limit: number } => p.value != null);
 

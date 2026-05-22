@@ -139,6 +139,31 @@ describe('computeScore', () => {
     const r = computeScore({ nox: 0.2, nox_unit: 'ppm' });
     assert.equal(r.score, 0);
   });
+
+  test('custom VOC thresholds and baseline overrides are applied', () => {
+    const r1 = computeScore({
+      voc: 10,
+      voc_thresholds: { good: 50, mod: 100, high: 150 },
+      voc_index_baseline: 10
+    });
+    assert.equal(r1.score, 100);
+
+    const r2 = computeScore({
+      voc: 80,
+      voc_thresholds: { good: 50, mod: 100, high: 150 },
+      voc_index_baseline: 10
+    });
+    assert.equal(r2.score, 50);
+  });
+
+  test('custom NOx thresholds and baseline overrides are applied', () => {
+    const r = computeScore({
+      nox: 15,
+      nox_thresholds: { good: 10, mod: 20, high: 30 },
+      nox_index_baseline: 0
+    });
+    assert.equal(r.score, 50);
+  });
 });
 
 describe('calcThreshold', () => {

@@ -557,7 +557,7 @@ export class AirQualityCard extends LitElement {
           aria-valuemax="100"
           aria-label="${name} level"
         >
-          <div class="fill" style=${styleMap({ width: `${st.pct}%`, background: st.color })}></div>
+          <div class="fill" style=${styleMap({ left: `${st.left ?? 0}%`, width: `${st.pct}%`, background: st.color })}></div>
         </div>
       </div>
     `;

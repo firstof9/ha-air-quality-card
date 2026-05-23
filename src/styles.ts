@@ -324,10 +324,12 @@ export const cardStyles = css`
     border-radius: 2px;
     overflow: hidden;
     margin-top: 8px;
+    position: relative;
   }
 
   .tile-bar > .fill {
     height: 100%;
+    position: absolute;
   }
 
   /* Mobile fallback */

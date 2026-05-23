@@ -134,14 +134,50 @@ export function calcThreshold(
   high: number,
   baseline = 0,
 ): ThresholdResult {
-  if (value == null) return { label: '--',     color: 'var(--divider-color, #444)', text: 'var(--secondary-text-color)', pct: 0 };
-  const range = Math.max(1e-9, high - baseline);
-  const adjusted = Math.max(0, value - baseline);
-  const pct = Math.min(100, (adjusted / range) * 100);
-  if (value <= good) return { label: 'GOOD',   color: 'var(--air-quality-card-good-color, #86efac)',         text: 'var(--air-quality-card-good-text, #16a34a)',         pct };
-  if (value <= mod)  return { label: 'MOD',    color: 'var(--air-quality-card-moderate-color, #fde68a)',     text: 'var(--air-quality-card-moderate-text, #ca8a04)',     pct };
-  if (value <= high) return { label: 'HIGH',   color: 'var(--air-quality-card-unhealthy-sg-color, #fdba74)', text: 'var(--air-quality-card-unhealthy-sg-text, #ea580c)', pct };
-  return                    { label: 'V.HIGH', color: 'var(--air-quality-card-unhealthy-color, #fca5a5)',    text: 'var(--air-quality-card-unhealthy-text, #dc2626)',    pct: 100 };
+  if (value == null) {
+    return { label: '--', color: 'var(--divider-color, #444)', text: 'var(--secondary-text-color)', pct: 0, left: 0 };
+  }
+
+  let pct = 0;
+  let left = 0;
+
+  if (baseline > 0) {
+    // Bidirectional Index Bar (e.g. VOC Index baseline 100)
+    if (value >= baseline) {
+      const range = Math.max(1e-9, high - baseline);
+      pct = Math.min(50, ((value - baseline) / range) * 50);
+      left = 50;
+    } else {
+      // Moves left (value < baseline)
+      pct = Math.min(50, ((baseline - value) / baseline) * 50);
+      left = 50 - pct;
+    }
+  } else {
+    // Normal progress bar starting from left (0%)
+    pct = Math.min(100, (value / high) * 100);
+    left = 0;
+  }
+
+  // Determine color and label using absolute value checks
+  let label = 'V.HIGH';
+  let color = 'var(--air-quality-card-unhealthy-color, #fca5a5)';
+  let text = 'var(--air-quality-card-unhealthy-text, #dc2626)';
+
+  if (value <= good) {
+    label = 'GOOD';
+    color = 'var(--air-quality-card-good-color, #86efac)';
+    text = 'var(--air-quality-card-good-text, #16a34a)';
+  } else if (value <= mod) {
+    label = 'MOD';
+    color = 'var(--air-quality-card-moderate-color, #fde68a)';
+    text = 'var(--air-quality-card-moderate-text, #ca8a04)';
+  } else if (value <= high) {
+    label = 'HIGH';
+    color = 'var(--air-quality-card-unhealthy-sg-color, #fdba74)';
+    text = 'var(--air-quality-card-unhealthy-sg-text, #ea580c)';
+  }
+
+  return { label, color, text, pct, left };
 }
 
 // Computes the calculated-score-mode headline state from the available

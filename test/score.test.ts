@@ -236,13 +236,13 @@ describe('calcThreshold', () => {
     assert.ok(r.pct <= 100);
   });
 
-  test('baseline shifts pct: value at baseline yields empty bar', () => {
+  test('baseline shifts pct: value at baseline yields empty bar at center', () => {
     // Sensirion VOC Index thresholds with baseline 100: a reading of 100 is
-    // "GOOD" and the bar should be empty (matching the perfect-score result
-    // from computeScore), not ~29% full.
+    // "GOOD" and the bar should be empty at the 50% center mark.
     const r = calcThreshold(100, 100, 250, 350, 100);
     assert.equal(r.label, 'GOOD');
     assert.equal(r.pct, 0);
+    assert.equal(r.left, 50);
   });
 
   test('baseline does not change band labels (still absolute)', () => {
@@ -250,18 +250,22 @@ describe('calcThreshold', () => {
     // (the labels track the absolute Sensirion bands, only the fill shifts).
     const r = calcThreshold(250, 100, 250, 350, 100);
     assert.equal(r.label, 'MOD');
+    assert.equal(r.pct, 30);
+    assert.equal(r.left, 50);
   });
 
-  test('values below baseline floor pct at 0', () => {
+  test('values below baseline shift pct to the left', () => {
     const r = calcThreshold(50, 100, 250, 350, 100);
     assert.equal(r.label, 'GOOD');
-    assert.equal(r.pct, 0);
+    assert.equal(r.pct, 25);
+    assert.equal(r.left, 25);
   });
 
   test('baseline default of 0 preserves legacy pct behavior', () => {
-    // Old call sites that pass no baseline keep the original (value/high)*100.
+    // Old call sites that pass no baseline keep the original (value/high)*100 starting at 0%.
     const r = calcThreshold(25, 10, 25, 50);
     assert.equal(r.pct, 50);
+    assert.equal(r.left, 0);
   });
 });
 

@@ -42,6 +42,7 @@ export interface ThresholdResult {
   color: string;
   text: string;
   pct: number;
+  left?: number;
 }
 
 export interface ScoreResult {

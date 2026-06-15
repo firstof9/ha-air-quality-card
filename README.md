@@ -61,6 +61,11 @@ pm10_entity: sensor.living_room_pm10
 # Optional: pm1_entity, pm4_entity, voc_entity, co2_entity, default_expanded
 ```
 
+Every entity except the headline source is optional. Any optional entity you leave
+unset is hidden from the card entirely — its tile (and, for temperature/humidity, the
+trend-graph series) is omitted rather than shown empty. An entity that *is* configured
+but currently reports `unavailable` still renders as `--`.
+
 ## Advanced configuration
 
 ### Custom VOC / NOx thresholds and baselines

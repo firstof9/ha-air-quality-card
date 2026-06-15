@@ -134,6 +134,14 @@ export function entitiesWithHistory(
   return out;
 }
 
+// True when an entity is actually configured: a present, non-empty string.
+// Drives config-based component visibility — distinct from whether the entity
+// currently has a numeric value (a configured-but-unavailable entity is still
+// "configured" and should still render as `--`).
+export function hasEntity(value?: string): boolean {
+  return typeof value === 'string' && value.trim() !== '';
+}
+
 // Pollutant tile threshold lookup.
 //   color = bright tint for bar fill, text = readable on both themes.
 // Both routed through CSS custom properties (defaults match the band

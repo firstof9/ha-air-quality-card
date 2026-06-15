@@ -13,6 +13,7 @@ import {
   getVocDefaultBaseline,
   getNoxDefaultBaseline,
   entitiesWithHistory,
+  hasEntity,
   translate,
 } from './helpers.js';
 import { cardStyles } from './styles.js';
@@ -539,7 +540,11 @@ export class AirQualityCard extends LitElement {
           </div>
           <div class="advice">${advice}</div>
 
+          ${hasEntity(config.temp_entity) || hasEntity(config.humid_entity)
+            ? html`
           <div class="stats">
+            ${hasEntity(config.temp_entity)
+              ? html`
             <div
               class=${classMap({ stat: true, empty: temp == null })}
               aria-label="Temperature: ${this._formatNum(temp, 1)} ${tempUnit}"
@@ -549,8 +554,13 @@ export class AirQualityCard extends LitElement {
                 <span class="unit">${temp == null ? '' : tempUnit}</span>
               </div>
               <div class="stat-label" aria-hidden="true">${this.t('stats.temp')}</div>
-            </div>
-            <div class="divider" aria-hidden="true"></div>
+            </div>`
+              : nothing}
+            ${hasEntity(config.temp_entity) && hasEntity(config.humid_entity)
+              ? html`<div class="divider" aria-hidden="true"></div>`
+              : nothing}
+            ${hasEntity(config.humid_entity)
+              ? html`
             <div
               class=${classMap({ stat: true, empty: humid == null })}
               aria-label="Humidity: ${this._formatNum(humid, 0)} ${humidUnit}"
@@ -560,8 +570,10 @@ export class AirQualityCard extends LitElement {
                 <span class="unit">${humid == null ? '' : humidUnit}</span>
               </div>
               <div class="stat-label" aria-hidden="true">${this.t('stats.humidity')}</div>
-            </div>
-          </div>
+            </div>`
+              : nothing}
+          </div>`
+            : nothing}
         </div>
 
         <div

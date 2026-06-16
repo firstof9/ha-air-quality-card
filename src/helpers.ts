@@ -135,9 +135,9 @@ export function entitiesWithHistory(
 }
 
 // True when an entity is actually configured: a present, non-empty string.
-// Drives config-based component visibility — distinct from whether the entity
-// currently has a numeric value (a configured-but-unavailable entity is still
-// "configured" and should still render as `--`).
+// Drives config-based component visibility. A configured-but-unavailable entity
+// is still "configured" (it renders the usual `--` placeholder elsewhere); only
+// an unset or empty entity is omitted from the card entirely.
 export function hasEntity(value?: string): boolean {
   return typeof value === 'string' && value.trim() !== '';
 }

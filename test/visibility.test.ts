@@ -16,4 +16,7 @@ describe('hasEntity', () => {
   test('false for whitespace-only string', () => {
     assert.equal(hasEntity('   '), false);
   });
+  test('true for an entity id with surrounding whitespace', () => {
+    assert.equal(hasEntity('  sensor.temp  '), true);
+  });
 });

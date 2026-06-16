@@ -134,6 +134,14 @@ export function entitiesWithHistory(
   return out;
 }
 
+// True when an entity is actually configured: a present, non-empty string.
+// Drives config-based component visibility. A configured-but-unavailable entity
+// is still "configured" (it renders the usual `--` placeholder elsewhere); only
+// an unset or empty entity is omitted from the card entirely.
+export function hasEntity(value?: string): boolean {
+  return typeof value === 'string' && value.trim() !== '';
+}
+
 // Pollutant tile threshold lookup.
 //   color = bright tint for bar fill, text = readable on both themes.
 // Both routed through CSS custom properties (defaults match the band

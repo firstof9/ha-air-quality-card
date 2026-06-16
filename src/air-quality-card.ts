@@ -13,6 +13,7 @@ import {
   getVocDefaultBaseline,
   getNoxDefaultBaseline,
   entitiesWithHistory,
+  hasEntity,
   translate,
 } from './helpers.js';
 import { cardStyles } from './styles.js';
@@ -446,6 +447,7 @@ export class AirQualityCard extends LitElement {
 
         ${this._expanded
           ? this._renderBottom({
+              config,
               pm1, pm25, pm4, pm10, voc, co2, nox,
               pm1Unit, pm25Unit, pm4Unit, pm10Unit, vocUnit, co2Unit, noxUnit,
               pm1S, pm25S, pm4S, pm10S, vocS, co2S, noxS,
@@ -539,7 +541,11 @@ export class AirQualityCard extends LitElement {
           </div>
           <div class="advice">${advice}</div>
 
+          ${hasEntity(config.temp_entity) || hasEntity(config.humid_entity)
+            ? html`
           <div class="stats">
+            ${hasEntity(config.temp_entity)
+              ? html`
             <div
               class=${classMap({ stat: true, empty: temp == null })}
               aria-label="Temperature: ${this._formatNum(temp, 1)} ${tempUnit}"
@@ -549,8 +555,13 @@ export class AirQualityCard extends LitElement {
                 <span class="unit">${temp == null ? '' : tempUnit}</span>
               </div>
               <div class="stat-label" aria-hidden="true">${this.t('stats.temp')}</div>
-            </div>
-            <div class="divider" aria-hidden="true"></div>
+            </div>`
+              : nothing}
+            ${hasEntity(config.temp_entity) && hasEntity(config.humid_entity)
+              ? html`<div class="divider" aria-hidden="true"></div>`
+              : nothing}
+            ${hasEntity(config.humid_entity)
+              ? html`
             <div
               class=${classMap({ stat: true, empty: humid == null })}
               aria-label="Humidity: ${this._formatNum(humid, 0)} ${humidUnit}"
@@ -560,8 +571,10 @@ export class AirQualityCard extends LitElement {
                 <span class="unit">${humid == null ? '' : humidUnit}</span>
               </div>
               <div class="stat-label" aria-hidden="true">${this.t('stats.humidity')}</div>
-            </div>
-          </div>
+            </div>`
+              : nothing}
+          </div>`
+            : nothing}
         </div>
 
         <div
@@ -597,13 +610,14 @@ export class AirQualityCard extends LitElement {
   }
 
   private _renderBottom(d: {
+    config: AirQualityCardConfig;
     pm1: number | null; pm25: number | null; pm4: number | null; pm10: number | null;
     voc: number | null; co2: number | null; nox: number | null;
     pm1Unit: string; pm25Unit: string; pm4Unit: string; pm10Unit: string;
     vocUnit: string; co2Unit: string; noxUnit: string;
     pm1S: ThresholdResult; pm25S: ThresholdResult; pm4S: ThresholdResult;
     pm10S: ThresholdResult; vocS: ThresholdResult; co2S: ThresholdResult; noxS: ThresholdResult;
-  }): TemplateResult {
+  }): TemplateResult | typeof nothing {
     const tile = (name: string, value: number | null, unit: string, st: ThresholdResult) => html`
       <div
         class=${classMap({ tile: true, empty: value == null })}
@@ -630,19 +644,23 @@ export class AirQualityCard extends LitElement {
         </div>
       </div>
     `;
+    const pmTiles: TemplateResult[] = [];
+    if (hasEntity(d.config.pm1_entity))  pmTiles.push(tile('PM1.0', d.pm1, d.pm1Unit, d.pm1S));
+    if (hasEntity(d.config.pm25_entity)) pmTiles.push(tile('PM2.5', d.pm25, d.pm25Unit, d.pm25S));
+    if (hasEntity(d.config.pm4_entity))  pmTiles.push(tile('PM4.0', d.pm4, d.pm4Unit, d.pm4S));
+    if (hasEntity(d.config.pm10_entity)) pmTiles.push(tile('PM10', d.pm10, d.pm10Unit, d.pm10S));
+
+    const gasTiles: TemplateResult[] = [];
+    if (hasEntity(d.config.voc_entity)) gasTiles.push(tile('VOC', d.voc, d.vocUnit, d.vocS));
+    if (hasEntity(d.config.nox_entity)) gasTiles.push(tile('NOₓ', d.nox, d.noxUnit, d.noxS));
+    if (hasEntity(d.config.co2_entity)) gasTiles.push(tile('CO₂', d.co2, d.co2Unit, d.co2S));
+
+    if (pmTiles.length === 0 && gasTiles.length === 0) return nothing;
+
     return html`
       <div class="bottom">
-        <div class="tile-grid pm-grid">
-          ${tile('PM1.0', d.pm1, d.pm1Unit, d.pm1S)}
-          ${tile('PM2.5', d.pm25, d.pm25Unit, d.pm25S)}
-          ${tile('PM4.0', d.pm4, d.pm4Unit, d.pm4S)}
-          ${tile('PM10', d.pm10, d.pm10Unit, d.pm10S)}
-        </div>
-        <div class="tile-grid">
-          ${tile('VOC', d.voc, d.vocUnit, d.vocS)}
-          ${tile('NOₓ', d.nox, d.noxUnit, d.noxS)}
-          ${tile('CO₂', d.co2, d.co2Unit, d.co2S)}
-        </div>
+        ${pmTiles.length ? html`<div class="tile-grid pm-grid">${pmTiles}</div>` : nothing}
+        ${gasTiles.length ? html`<div class="tile-grid">${gasTiles}</div>` : nothing}
       </div>
     `;
   }

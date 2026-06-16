@@ -1,3 +1,29 @@
+name-template: "$RESOLVED_VERSION"
+tag-template: "$RESOLVED_VERSION"
+change-template: "- $TITLE @$AUTHOR (#$NUMBER)"
+sort-direction: ascending
+
+version-resolver:
+  major:
+    labels:
+      - "breaking-change"
+  minor:
+    labels:
+      - "feature"
+      - "feat"
+      - "enhancement"
+  patch:
+    labels:
+      - "fix"
+      - "bug"
+      - "docs"
+      - "documentation"
+      - "chore"
+      - "refactor"
+      - "ci"
+      - "dependencies"
+  default: patch
+
 categories:
   - title: '✨ Enhancements'
     labels:

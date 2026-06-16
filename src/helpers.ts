@@ -118,6 +118,22 @@ export function translate(path: string, lang = 'en'): string {
   return lookup(STRINGS[lang]) ?? lookup(STRINGS.en) ?? path;
 }
 
+// Given a history_during_period response keyed by entity_id, return the set
+// of entity ids that have at least one recorded data point. Used to drop
+// recorder-excluded entities from the trend graph before mounting it.
+export function entitiesWithHistory(
+  resp: Record<string, unknown[]> | undefined,
+  entityIds: string[],
+): Set<string> {
+  const out = new Set<string>();
+  if (!resp) return out;
+  for (const id of entityIds) {
+    const series = resp[id];
+    if (Array.isArray(series) && series.length > 0) out.add(id);
+  }
+  return out;
+}
+
 // Pollutant tile threshold lookup.
 //   color = bright tint for bar fill, text = readable on both themes.
 // Both routed through CSS custom properties (defaults match the band

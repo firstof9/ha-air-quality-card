@@ -12,6 +12,7 @@ import {
   getNoxThresholds,
   getVocDefaultBaseline,
   getNoxDefaultBaseline,
+  entitiesWithHistory,
   translate,
 } from './helpers.js';
 import { cardStyles } from './styles.js';
@@ -59,6 +60,10 @@ export class AirQualityCard extends LitElement {
 
   private _graphCard?: MiniGraphCardElement;
   private _graphConfigured = false;
+  // `${temp}|${humid}` of the entity set we last probed/configured the graph
+  // for. Lets us skip re-probing on every hass tick but re-probe when the
+  // configured graph entities change.
+  private _graphProbeKey?: string;
 
   public static getConfigElement(): HTMLElement {
     return document.createElement('air-quality-card-editor');
@@ -134,24 +139,87 @@ export class AirQualityCard extends LitElement {
   }
 
   private _setupGraphCard(config: AirQualityCardConfig): void {
-    if (!this._graphCard) {
-      this._graphCard = document.createElement('mini-graph-card') as MiniGraphCardElement;
+    // New entity set → reset so we re-probe and re-show.
+    const key = `${config.temp_entity ?? ''}|${config.humid_entity ?? ''}`;
+    if (key !== this._graphProbeKey) {
+      this._graphProbeKey = undefined;
+      this._graphConfigured = false;
+      if (this._graphCard) this._graphCard.style.display = 'none';
     }
-    const graphEntities: Array<Record<string, unknown>> = [];
+    this._maybeSetupGraph();
+  }
+
+  // Builds the graph once hass is available: probes recorder history for the
+  // configured temp/humid entities and mounts mini-graph-card with only the
+  // entities that actually have data. Called from setConfig and from updated()
+  // on the first hass. Idempotent per entity set via _graphProbeKey.
+  private _maybeSetupGraph(): void {
+    const config = this._config;
+    if (!config) return;
+    const key = `${config.temp_entity ?? ''}|${config.humid_entity ?? ''}`;
+    if (this._graphProbeKey === key) return;
+
+    const candidates: Array<{ id: string; spec: Record<string, unknown> }> = [];
     if (config.temp_entity) {
-      graphEntities.push({ entity: config.temp_entity, name: 'Temp', color: '#fde68a' });
+      candidates.push({ id: config.temp_entity, spec: { entity: config.temp_entity, name: 'Temp', color: '#fde68a' } });
     }
     if (config.humid_entity) {
-      graphEntities.push({
-        entity: config.humid_entity,
-        name: 'Humidity',
-        color: '#a8c0e0',
-        y_axis: 'secondary',
-      });
+      candidates.push({ id: config.humid_entity, spec: { entity: config.humid_entity, name: 'Humidity', color: '#a8c0e0', y_axis: 'secondary' } });
     }
-    if (graphEntities.length === 0) {
-      this._graphCard.style.display = 'none';
+
+    if (candidates.length === 0) {
+      this._graphProbeKey = key;
+      this._graphConfigured = false;
+      if (this._graphCard) this._graphCard.style.display = 'none';
       return;
+    }
+
+    // Need hass to probe; updated() re-invokes us when it arrives.
+    if (!this.hass) return;
+
+    // Mark this entity set as handled (probe in flight) so we don't fire it
+    // again on the next hass tick.
+    this._graphProbeKey = key;
+
+    // No callWS available (e.g. test/preview): can't probe, keep all.
+    if (typeof this.hass.callWS !== 'function') {
+      this._configureGraph(candidates.map(c => c.spec));
+      return;
+    }
+
+    const hours = 24;
+    const end = new Date();
+    const start = new Date(end.getTime() - hours * 3600_000);
+    this.hass
+      .callWS<Record<string, unknown[]>>({
+        type: 'history/history_during_period',
+        start_time: start.toISOString(),
+        end_time: end.toISOString(),
+        entity_ids: candidates.map(c => c.id),
+        minimal_response: true,
+        no_attributes: true,
+      })
+      .then(resp => {
+        const live = entitiesWithHistory(resp, candidates.map(c => c.id));
+        this._configureGraph(candidates.filter(c => live.has(c.id)).map(c => c.spec));
+      })
+      .catch(() => {
+        // Probe failed — fall back to including all candidates (prior behavior),
+        // so a transient history error never hides a working graph.
+        this._configureGraph(candidates.map(c => c.spec));
+      });
+  }
+
+  // Mounts/refreshes mini-graph-card with the given entity specs, preserving the
+  // graceful-degradation path for when mini-graph-card isn't installed.
+  private _configureGraph(entities: Array<Record<string, unknown>>): void {
+    if (entities.length === 0) {
+      this._graphConfigured = false;
+      if (this._graphCard) this._graphCard.style.display = 'none';
+      return;
+    }
+    if (!this._graphCard) {
+      this._graphCard = document.createElement('mini-graph-card') as MiniGraphCardElement;
     }
     // Race whenDefined against a 2s timeout so we degrade gracefully
     // when mini-graph-card isn't installed.
@@ -161,25 +229,22 @@ export class AirQualityCard extends LitElement {
     );
     Promise.race([ready, timeout])
       .then(() => {
-        try {
-          this._graphCard!.setConfig({
-            type: 'custom:mini-graph-card',
-            entities: graphEntities,
-            hours_to_show: 24,
-            points_per_hour: 2,
-            line_width: 2,
-            animate: true,
-            smoothing: true,
-            hour24: true,
-            height: 60,
-            show: { name: false, icon: false, state: false, legend: true, labels: false, fill: 'fade' },
-          });
-        } catch (err) {
-          throw err;
-        }
+        this._graphCard!.setConfig({
+          type: 'custom:mini-graph-card',
+          entities,
+          hours_to_show: 24,
+          points_per_hour: 2,
+          line_width: 2,
+          animate: true,
+          smoothing: true,
+          hour24: true,
+          height: 60,
+          show: { name: false, icon: false, state: false, legend: true, labels: false, fill: 'fade' },
+        });
         this._graphConfigured = true;
         this._graphCard!.style.display = 'block';
         if (this.hass) this._graphCard!.hass = this.hass;
+        this.requestUpdate();
       })
       .catch((err: unknown) => {
         this._graphConfigured = false;
@@ -192,12 +257,16 @@ export class AirQualityCard extends LitElement {
             '[air-quality-card] mini-graph-card not found, temp/humidity history graph disabled. Install via HACS to enable it.',
           );
         }
+        this.requestUpdate();
       });
   }
 
   protected override updated(changed: PropertyValues): void {
-    if (changed.has('hass') && this._graphCard && this._graphConfigured && this.hass) {
-      this._graphCard.hass = this.hass;
+    if (changed.has('hass') && this.hass) {
+      this._maybeSetupGraph();
+      if (this._graphCard && this._graphConfigured) {
+        this._graphCard.hass = this.hass;
+      }
     }
   }
 

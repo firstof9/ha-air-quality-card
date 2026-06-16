@@ -23,6 +23,8 @@ A modern, highly customizable air quality card for Home Assistant with support f
 
 This card optionally uses [mini-graph-card](https://github.com/kalkih/mini-graph-card) to display temperature and humidity trend graphs. **The card will function normally without it**, but the trend graphs will not be displayed.
 
+A temperature or humidity entity that has no recorder history (e.g. it's excluded from the `recorder:` integration) is skipped in the trend graph automatically, so the graph never hangs waiting on data that will never arrive. If neither temperature nor humidity has recorded history, the graph is hidden entirely.
+
 ## Installation
 
 ### HACS (Recommended)

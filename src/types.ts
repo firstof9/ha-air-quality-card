@@ -15,6 +15,7 @@ export interface HomeAssistant {
   states: Record<string, HassEntityState>;
   locale?: { language?: string };
   language?: string;
+  callWS?<T>(msg: Record<string, unknown>): Promise<T>;
 }
 
 export interface AirQualityCardConfig {

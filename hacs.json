@@ -1,5 +1,6 @@
 {
   "name": "Air Quality Card",
   "render_readme": true,
-  "filename": "air-quality-card.js"
+  "filename": "air-quality-card.js",
+  "hide_default_branch": true
 }

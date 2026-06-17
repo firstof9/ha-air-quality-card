@@ -25,6 +25,8 @@ jobs:
           node-version: '22'
       - run: npm ci
       - run: npm run build
+        env:
+          CARD_VERSION: ${{ github.event.inputs.tag || github.event.release.tag_name }}
       - name: Upload card bundle
         uses: softprops/action-gh-release@b4309332981a82ec1c5618f44dd2e27cc8bfbfda # v3.0.0
         with:

@@ -240,7 +240,7 @@ export class AirQualityCard extends LitElement {
           smoothing: true,
           hour24: true,
           height: 60,
-          show: { name: false, icon: false, state: false, legend: true, labels: false, fill: 'fade' },
+          show: { name: false, icon: false, state: true, legend: true, labels: false, fill: 'fade' },
         });
         this._graphConfigured = true;
         this._graphCard!.style.display = 'block';

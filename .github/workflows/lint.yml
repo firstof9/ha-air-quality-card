@@ -1,8 +1,8 @@
 name: Lint
-true:
+on:
   push:
     branches:
-    - main
+      - main
   pull_request: null
 permissions:
   contents: read

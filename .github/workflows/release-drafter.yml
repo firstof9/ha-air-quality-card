@@ -1,8 +1,8 @@
 name: Release Drafter
-true:
+on:
   push:
     branches:
-    - main
+      - main
 permissions: {}
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -17,8 +17,6 @@ jobs:
     timeout-minutes: 3
     steps:
     - uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d
-      with:
-        egress-policy: audit
       with:
         egress-policy: audit
     - uses: release-drafter/release-drafter@ed4bc48ec97379be2258e7b7ac2624a3e26ab809

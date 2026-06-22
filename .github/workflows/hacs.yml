@@ -1,9 +1,9 @@
 name: HACS Action
-true:
+on:
   pull_request: null
   push:
     branches:
-    - main
+      - main
 permissions:
   contents: read
 jobs:
@@ -19,4 +19,4 @@ jobs:
     - name: HACS Action
       uses: hacs/action@1ebf01c408f29afcb6406bd431bc98fd8cbb15aa
       with:
-        category: plugin
+        category: "plugin"

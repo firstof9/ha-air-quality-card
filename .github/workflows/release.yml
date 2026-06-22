@@ -1,8 +1,8 @@
 name: Release
-true:
+on:
   release:
     types:
-    - published
+      - published
   workflow_dispatch:
     inputs:
       tag:
@@ -27,8 +27,7 @@ jobs:
     - run: npm ci
     - run: npm run build
       env:
-        CARD_VERSION: ${{ github.event.inputs.tag || github.event.release.tag_name
-          }}
+        CARD_VERSION: ${{ github.event.inputs.tag || github.event.release.tag_name }}
     - name: Upload card bundle
       uses: softprops/action-gh-release@b4309332981a82ec1c5618f44dd2e27cc8bfbfda
       with:

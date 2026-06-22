@@ -1,22 +1,24 @@
 name: HACS Action
-
 on:
-  pull_request:
+  pull_request: null
   push:
     branches:
       - main
-
 permissions:
   contents: read
-
 jobs:
   hacs:
     name: HACS Action
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
-      - name: HACS Action
-        uses: hacs/action@1ebf01c408f29afcb6406bd431bc98fd8cbb15aa # latest main commit
-        with:
-          category: "plugin"
+    - uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d # v2.19.4
+      with:
+        egress-policy: audit
+    - name: Checkout
+      uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+      with:
+        fetch-depth: 0
+    - name: HACS Action
+      uses: hacs/action@1ebf01c408f29afcb6406bd431bc98fd8cbb15aa # latest
+      with:
+        category: "plugin"

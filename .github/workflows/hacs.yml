@@ -16,6 +16,8 @@ jobs:
         egress-policy: audit
     - name: Checkout
       uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10
+      with:
+        fetch-depth: 0
     - name: HACS Action
       uses: hacs/action@1ebf01c408f29afcb6406bd431bc98fd8cbb15aa
       with:

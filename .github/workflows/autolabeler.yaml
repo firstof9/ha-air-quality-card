@@ -22,7 +22,7 @@ jobs:
     if: '(github.event_name == ''pull_request_target'' && github.event.pull_request.head.repo.fork)
       || (github.event_name == ''pull_request'' && !github.event.pull_request.head.repo.fork)'
     permissions:
-      contents: read
+      contents: write
       pull-requests: write
     runs-on: ubuntu-latest
     timeout-minutes: 3

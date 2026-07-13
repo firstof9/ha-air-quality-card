@@ -22,7 +22,7 @@
     "rollup-plugin-esbuild": "^6.2.1",
     "tslib": "^2.6.0",
     "tsx": "^4.23.1",
-    "typescript": "^6.0.3"
+    "typescript": "^7.0.2"
   },
   "dependencies": {
     "lit": "^3.3.3"

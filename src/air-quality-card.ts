@@ -10,6 +10,7 @@ import {
   computeScore,
   getVocThresholds,
   getNoxThresholds,
+  getRadonThresholds,
   getVocDefaultBaseline,
   getNoxDefaultBaseline,
   entitiesWithHistory,
@@ -44,6 +45,7 @@ const ALLOWED_DOMAINS: Record<string, string[]> = {
   pm10_entity:   ['sensor.'],
   voc_entity:    ['sensor.'],
   co2_entity:    ['sensor.'],
+  radon_entity:  ['sensor.'],
 };
 
 interface MiniGraphCardElement extends HTMLElement {
@@ -83,6 +85,7 @@ export class AirQualityCard extends LitElement {
       pm10_entity: '',
       voc_entity: '',
       co2_entity: '',
+      radon_entity: '',
     };
   }
 
@@ -305,6 +308,7 @@ export class AirQualityCard extends LitElement {
     const temp  = this._safeNum(config.temp_entity);
     const humid = this._safeNum(config.humid_entity);
     const nox   = this._safeNum(config.nox_entity);
+    const radon = this._safeNum(config.radon_entity);
 
     const tempUnit  = this._getUnit(config.temp_entity, '°C');
     const humidUnit = this._getUnit(config.humid_entity, '%');
@@ -315,6 +319,7 @@ export class AirQualityCard extends LitElement {
     const vocUnit   = this._getUnit(config.voc_entity, 'index');
     const co2Unit   = this._getUnit(config.co2_entity, 'ppm');
     const noxUnit   = this._getUnit(config.nox_entity, 'index');
+    const radonUnit = this._getUnit(config.radon_entity, 'pCi/L');
 
     // --- Headline state ---
     const radius = 42;
@@ -370,6 +375,8 @@ export class AirQualityCard extends LitElement {
     const noxT  = config.nox_thresholds ?? getNoxThresholds(noxUnit);
     const noxB  = config.nox_baseline ?? (config.nox_thresholds ? 0 : getNoxDefaultBaseline(noxUnit));
     const noxS  = calcThreshold(nox,  noxT.good,  noxT.mod,  noxT.high, noxB);
+    const radonT = getRadonThresholds(radonUnit);
+    const radonS = calcThreshold(radon, radonT.good, radonT.mod, radonT.high);
 
     // Pollutant override advice, only when headline is benign so we
     // don't downgrade an Unhealthy/Hazardous warning.
@@ -379,6 +386,7 @@ export class AirQualityCard extends LitElement {
       if (co2 != null && co2 > 1000) advice = this.t('advice.co2High');
       if (co2 != null && co2 > 1500) advice = this.t('advice.co2VeryHigh');
       if (nox != null && nox > noxT.mod) advice = this.t('advice.noxHigh');
+      if (radon != null && radon > radonT.mod) advice = this.t('advice.radonHigh');
     }
 
     const headlineUnit = hasAqi
@@ -388,7 +396,7 @@ export class AirQualityCard extends LitElement {
       `${config.title || 'Air quality'}: ${displayLabel}, ${displayValue} ${headlineUnit}`.trim();
 
     // Chip background uses color-mix so user theme overrides on the
-    // band custom property automatically tint the badge too.
+    // badge custom property automatically tint the badge too.
     const chipBg = `color-mix(in srgb, ${ringColor} 12%, transparent)`;
     const chipBorder = `color-mix(in srgb, ${ringColor} 35%, transparent)`;
 
@@ -448,9 +456,9 @@ export class AirQualityCard extends LitElement {
         ${this._expanded
           ? this._renderBottom({
               config,
-              pm1, pm25, pm4, pm10, voc, co2, nox,
-              pm1Unit, pm25Unit, pm4Unit, pm10Unit, vocUnit, co2Unit, noxUnit,
-              pm1S, pm25S, pm4S, pm10S, vocS, co2S, noxS,
+              pm1, pm25, pm4, pm10, voc, co2, nox, radon,
+              pm1Unit, pm25Unit, pm4Unit, pm10Unit, vocUnit, co2Unit, noxUnit, radonUnit,
+              pm1S, pm25S, pm4S, pm10S, vocS, co2S, noxS, radonS,
             })
           : nothing}
       </ha-card>
@@ -612,11 +620,11 @@ export class AirQualityCard extends LitElement {
   private _renderBottom(d: {
     config: AirQualityCardConfig;
     pm1: number | null; pm25: number | null; pm4: number | null; pm10: number | null;
-    voc: number | null; co2: number | null; nox: number | null;
+    voc: number | null; co2: number | null; nox: number | null; radon: number | null;
     pm1Unit: string; pm25Unit: string; pm4Unit: string; pm10Unit: string;
-    vocUnit: string; co2Unit: string; noxUnit: string;
+    vocUnit: string; co2Unit: string; noxUnit: string; radonUnit: string;
     pm1S: ThresholdResult; pm25S: ThresholdResult; pm4S: ThresholdResult;
-    pm10S: ThresholdResult; vocS: ThresholdResult; co2S: ThresholdResult; noxS: ThresholdResult;
+    pm10S: ThresholdResult; vocS: ThresholdResult; co2S: ThresholdResult; noxS: ThresholdResult; radonS: ThresholdResult;
   }): TemplateResult | typeof nothing {
     const tile = (name: string, value: number | null, unit: string, st: ThresholdResult) => html`
       <div
@@ -654,6 +662,7 @@ export class AirQualityCard extends LitElement {
     if (hasEntity(d.config.voc_entity)) gasTiles.push(tile('VOC', d.voc, d.vocUnit, d.vocS));
     if (hasEntity(d.config.nox_entity)) gasTiles.push(tile('NOₓ', d.nox, d.noxUnit, d.noxS));
     if (hasEntity(d.config.co2_entity)) gasTiles.push(tile('CO₂', d.co2, d.co2Unit, d.co2S));
+    if (hasEntity(d.config.radon_entity)) gasTiles.push(tile('Radon', d.radon, d.radonUnit, d.radonS));
 
     if (pmTiles.length === 0 && gasTiles.length === 0) return nothing;
 

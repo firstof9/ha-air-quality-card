@@ -14,6 +14,7 @@ import {
   AQI_BANDS,
   SCORE_BANDS,
   translate,
+  getRadonThresholds,
 } from '../src/helpers.js';
 
 describe('computeScore', () => {
@@ -315,3 +316,26 @@ describe('translate', () => {
     assert.equal(translate('topName.score'), 'Calculated Score');
   });
 });
+
+describe('getRadonThresholds', () => {
+  test('returns pCi/L thresholds by default or when unit is pCi/L', () => {
+    const tDefault = getRadonThresholds();
+    assert.equal(tDefault.good, 2);
+    assert.equal(tDefault.mod, 4);
+    assert.equal(tDefault.high, 8);
+
+    const tPci = getRadonThresholds('pCi/L');
+    assert.equal(tPci.good, 2);
+  });
+
+  test('returns Bq/m³ thresholds when unit is Bq/m³ or Becquerel', () => {
+    const tBq = getRadonThresholds('Bq/m³');
+    assert.equal(tBq.good, 100);
+    assert.equal(tBq.mod, 150);
+    assert.equal(tBq.high, 300);
+
+    const tBecq = getRadonThresholds('Becquerel');
+    assert.equal(tBecq.good, 100);
+  });
+});
+

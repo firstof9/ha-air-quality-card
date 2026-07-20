@@ -23,6 +23,8 @@ export const POLLUTANT_THRESHOLDS = {
   nox_index: { good: 1,   mod: 20,   high: 50 },  // NOx Index baseline is 1
   nox_ugm3:  { good: 50,  mod: 100,  high: 200 },
   nox_ppm:   { good: 0.05, mod: 0.1,  high: 0.2 },
+  radon_pci: { good: 2,   mod: 4,    high: 8 },
+  radon_bq:  { good: 100, mod: 150,  high: 300 },
 } as const;
 
 export function getVocThresholds(unit?: string) {
@@ -37,6 +39,12 @@ export function getNoxThresholds(unit?: string) {
   if (u.includes('m³') || u.includes('m3')) return POLLUTANT_THRESHOLDS.nox_ugm3;
   if (u.includes('ppm')) return POLLUTANT_THRESHOLDS.nox_ppm;
   return POLLUTANT_THRESHOLDS.nox_index;
+}
+
+export function getRadonThresholds(unit?: string) {
+  const u = (unit ?? '').toLowerCase();
+  if (u.includes('bq') || u.includes('becquerel')) return POLLUTANT_THRESHOLDS.radon_bq;
+  return POLLUTANT_THRESHOLDS.radon_pci;
 }
 
 // Default baseline ("no event" floor) for a VOC reading, used so that a sensor
@@ -101,6 +109,7 @@ export const STRINGS: Record<string, Record<string, unknown>> = {
       co2High:     'CO2 high - open a window',
       co2VeryHigh: 'CO2 very high - ventilate',
       noxHigh:     'High Nitrogen Oxides detected',
+      radonHigh:   'High Radon detected - ventilate or mitigate',
     },
   },
 };

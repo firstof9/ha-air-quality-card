@@ -58,7 +58,7 @@ temp_entity: sensor.living_room_temperature
 humid_entity: sensor.living_room_humidity
 pm25_entity: sensor.living_room_pm2_5
 pm10_entity: sensor.living_room_pm10
-# Optional: pm1_entity, pm4_entity, voc_entity, co2_entity, default_expanded
+# Optional: pm1_entity, pm4_entity, voc_entity, co2_entity, radon_entity, default_expanded
 ```
 
 Every entity except the headline source is optional. Any optional entity you leave
@@ -67,6 +67,15 @@ trend-graph series) is omitted rather than shown empty. An entity that *is* conf
 but currently reports `unavailable` still renders as `--`.
 
 ## Advanced configuration
+
+### Default pollutant bands
+
+The card uses official/standard threshold bands for display status and colors. For Radon, it automatically selects bands based on the entity's unit of measurement (defaulting to pCi/L):
+
+| Pollutant | Unit | Good | Moderate | High |
+|---|---|---|---|---|
+| Radon | `pCi/L` | ≤ 2.0 | ≤ 4.0 | ≤ 8.0 |
+| Radon | `Bq/m³` (or `Becquerel`) | ≤ 100 | ≤ 150 | ≤ 300 |
 
 ### Custom VOC / NOx thresholds and baselines
 

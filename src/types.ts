@@ -32,6 +32,7 @@ export interface AirQualityCardConfig {
   voc_entity?: string;
   co2_entity?: string;
   nox_entity?: string;
+  radon_entity?: string;
   voc_thresholds?: { good: number; mod: number; high: number };
   voc_baseline?: number;
   nox_thresholds?: { good: number; mod: number; high: number };

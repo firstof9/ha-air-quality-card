@@ -23,6 +23,7 @@ const SCHEMA: HaFormSchemaEntry[] = [
   { name: 'voc_entity',       label: 'VOC Index Sensor',      helper: 'Sensirion VOC Index (0-500 scale). Drives the score when VOCs are the worst pollutant.', selector: { entity: { domain: 'sensor' } } },
   { name: 'co2_entity',       label: 'CO2 Sensor (ppm)',      helper: 'Drives the score when CO2 is the worst pollutant (impacts cognitive function above 2000 ppm).', selector: { entity: { domain: 'sensor', device_class: 'carbon_dioxide' } } },
   { name: 'nox_entity',       label: 'NOX Sensor',            helper: 'Nitrogen Oxides (NO2/NOX). Drives the score when NOX levels are high.', selector: { entity: { domain: 'sensor' } } },
+  { name: 'radon_entity',     label: 'Radon Sensor',          helper: 'Displays Radon gas levels (supports pCi/L and Bq/m³).', selector: { entity: { domain: 'sensor' } } },
 ];
 
 @customElement('air-quality-card-editor')

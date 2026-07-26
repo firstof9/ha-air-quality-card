@@ -186,6 +186,12 @@ export const cardStyles = css`
     font-size: 10px;
     color: var(--secondary-text-color);
     margin-top: 2px;
+    white-space: nowrap;
+  }
+
+  /* Time range shown in place of the stat name while a graph point is hovered. */
+  .stat-time {
+    font-variant-numeric: tabular-nums;
   }
 
   .divider {

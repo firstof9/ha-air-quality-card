@@ -39,6 +39,27 @@ export interface AirQualityCardConfig {
   nox_baseline?: number;
 }
 
+// The card's own stats that a graph series can feed.
+export type GraphSeriesKey = 'temp' | 'humid';
+
+// mini-graph-card's hover state. Not part of its documented API, so every
+// field is optional and the shape is validated before use.
+export interface GraphTooltip {
+  entity?: number;
+  value?: number | string;
+  time?: [string, string];
+  label?: string | null;
+}
+
+// A hovered graph point mapped onto one of the card's stats.
+export interface GraphHoverReadout {
+  key: GraphSeriesKey;
+  value: number;
+  // Either the point's time range ("20:14 - 20:44") or mini-graph-card's own
+  // tooltip label ("Current" when hovering a legend entry). Empty when neither.
+  time: string;
+}
+
 export interface ThresholdResult {
   label: string;
   color: string;

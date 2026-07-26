@@ -86,6 +86,9 @@ export class AirQualityCard extends LitElement {
   // for. Lets us skip re-probing on every hass tick but re-probe when the
   // configured graph entities change.
   private _graphProbeKey?: string;
+  // Bumped for every probe started and every entity-set change, so a response
+  // that arrives after the config moved on gets dropped.
+  private _graphProbeSeq = 0;
 
   public static getConfigElement(): HTMLElement {
     return document.createElement('air-quality-card-editor');
@@ -162,10 +165,12 @@ export class AirQualityCard extends LitElement {
   }
 
   private _setupGraphCard(config: AirQualityCardConfig): void {
-    // New entity set → reset so we re-probe and re-show.
+    // New entity set → reset so we re-probe and re-show, and retire any probe
+    // still in flight for the old set so its response can't mount stale series.
     const key = `${config.temp_entity ?? ''}|${config.humid_entity ?? ''}`;
     if (key !== this._graphProbeKey) {
       this._graphProbeKey = undefined;
+      this._graphProbeSeq++;
       this._graphConfigured = false;
       if (this._graphCard) this._graphCard.style.display = 'none';
     }
@@ -210,6 +215,9 @@ export class AirQualityCard extends LitElement {
       return;
     }
 
+    // Responses can arrive out of order, so stamp this probe and drop the
+    // response if a newer probe has started since.
+    const probe = ++this._graphProbeSeq;
     const hours = 24;
     const end = new Date();
     const start = new Date(end.getTime() - hours * 3600_000);
@@ -223,10 +231,12 @@ export class AirQualityCard extends LitElement {
         no_attributes: true,
       })
       .then(resp => {
+        if (probe !== this._graphProbeSeq) return;
         const live = entitiesWithHistory(resp, candidates.map(c => c.id));
         this._configureGraph(candidates.filter(c => live.has(c.id)));
       })
       .catch(() => {
+        if (probe !== this._graphProbeSeq) return;
         // Probe failed — fall back to including all candidates (prior behavior),
         // so a transient history error never hides a working graph.
         this._configureGraph(candidates);

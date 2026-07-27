@@ -13,7 +13,8 @@ interface HaFormSchemaEntry {
 const SCHEMA: HaFormSchemaEntry[] = [
   { name: 'title',            label: 'Card Title',            helper: 'Shown at the top of the card.', selector: { text: {} } },
   { name: 'default_expanded', label: 'Expanded by Default',   helper: 'Whether the card opens expanded. Click the title to toggle.', selector: { boolean: {} } },
-  { name: 'aqi_entity',       label: 'AQI Sensor (Optional)', helper: "If set, displays this sensor's value with EPA AirNow bands. If empty or unavailable, falls back to a calculated score from PM2.5, VOC, and CO2.", selector: { entity: { domain: 'sensor', device_class: 'aqi' } } },
+  // setConfig accepts sensor.* and air_quality.*, so the picker offers both.
+  { name: 'aqi_entity',       label: 'AQI Sensor (Optional)', helper: "If set, displays this sensor's value with EPA AirNow bands. If empty or unavailable, falls back to a calculated score from PM2.5, VOC, and CO2.", selector: { entity: { filter: [{ domain: 'sensor', device_class: 'aqi' }, { domain: 'air_quality' }] } } },
   { name: 'temp_entity',      label: 'Temperature Sensor',    helper: 'Shown next to the headline. Also feeds the optional history graph.', selector: { entity: { domain: 'sensor', device_class: 'temperature' } } },
   { name: 'humid_entity',     label: 'Humidity Sensor',       helper: 'Shown next to the headline. Also feeds the optional history graph.', selector: { entity: { domain: 'sensor', device_class: 'humidity' } } },
   { name: 'pm1_entity',       label: 'PM1.0 Sensor',          helper: 'Display only - does not contribute to the calculated score.', selector: { entity: { domain: 'sensor', device_class: 'pm1' } } },

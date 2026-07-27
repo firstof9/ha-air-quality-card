@@ -14,12 +14,17 @@ import {
   getVocDefaultBaseline,
   getNoxDefaultBaseline,
   entitiesWithHistory,
+  graphHoverReadout,
   hasEntity,
+  sameGraphHover,
   translate,
 } from './helpers.js';
 import { cardStyles } from './styles.js';
 import type {
   AirQualityCardConfig,
+  GraphHoverReadout,
+  GraphSeriesKey,
+  GraphTooltip,
   HassEntityState,
   HomeAssistant,
   ThresholdResult,
@@ -51,6 +56,16 @@ const ALLOWED_DOMAINS: Record<string, string[]> = {
 interface MiniGraphCardElement extends HTMLElement {
   setConfig(config: unknown): void;
   hass?: HomeAssistant;
+  // Internal to mini-graph-card; read defensively, see graphHoverReadout().
+  tooltip?: GraphTooltip;
+}
+
+// One graph series: which card stat it feeds, and the mini-graph-card entity
+// config it is mounted with.
+interface GraphSeries {
+  id: string;
+  key: GraphSeriesKey;
+  spec: Record<string, unknown>;
 }
 
 @customElement('air-quality-card')
@@ -63,6 +78,10 @@ export class AirQualityCard extends LitElement {
 
   private _graphCard?: MiniGraphCardElement;
   private _graphConfigured = false;
+  // Card stats fed by each graph series, in the order they were mounted.
+  private _graphSeries: GraphSeriesKey[] = [];
+  // Point currently hovered on the graph, shown in place of the live stat.
+  @state() private _hover: GraphHoverReadout | null = null;
   // `${temp}|${humid}` of the entity set we last probed/configured the graph
   // for. Lets us skip re-probing on every hass tick but re-probe when the
   // configured graph entities change.
@@ -163,12 +182,12 @@ export class AirQualityCard extends LitElement {
     const key = `${config.temp_entity ?? ''}|${config.humid_entity ?? ''}`;
     if (this._graphProbeKey === key) return;
 
-    const candidates: Array<{ id: string; spec: Record<string, unknown> }> = [];
+    const candidates: GraphSeries[] = [];
     if (config.temp_entity) {
-      candidates.push({ id: config.temp_entity, spec: { entity: config.temp_entity, name: 'Temp', color: '#fde68a' } });
+      candidates.push({ id: config.temp_entity, key: 'temp', spec: { entity: config.temp_entity, name: 'Temp', color: '#fde68a' } });
     }
     if (config.humid_entity) {
-      candidates.push({ id: config.humid_entity, spec: { entity: config.humid_entity, name: 'Humidity', color: '#a8c0e0', y_axis: 'secondary' } });
+      candidates.push({ id: config.humid_entity, key: 'humid', spec: { entity: config.humid_entity, name: 'Humidity', color: '#a8c0e0', y_axis: 'secondary' } });
     }
 
     if (candidates.length === 0) {
@@ -187,7 +206,7 @@ export class AirQualityCard extends LitElement {
 
     // No callWS available (e.g. test/preview): can't probe, keep all.
     if (typeof this.hass.callWS !== 'function') {
-      this._configureGraph(candidates.map(c => c.spec));
+      this._configureGraph(candidates);
       return;
     }
 
@@ -205,25 +224,35 @@ export class AirQualityCard extends LitElement {
       })
       .then(resp => {
         const live = entitiesWithHistory(resp, candidates.map(c => c.id));
-        this._configureGraph(candidates.filter(c => live.has(c.id)).map(c => c.spec));
+        this._configureGraph(candidates.filter(c => live.has(c.id)));
       })
       .catch(() => {
         // Probe failed — fall back to including all candidates (prior behavior),
         // so a transient history error never hides a working graph.
-        this._configureGraph(candidates.map(c => c.spec));
+        this._configureGraph(candidates);
       });
   }
 
-  // Mounts/refreshes mini-graph-card with the given entity specs, preserving the
+  // Mounts/refreshes mini-graph-card with the given series, preserving the
   // graceful-degradation path for when mini-graph-card isn't installed.
-  private _configureGraph(entities: Array<Record<string, unknown>>): void {
-    if (entities.length === 0) {
+  private _configureGraph(series: GraphSeries[]): void {
+    this._graphSeries = series.map(s => s.key);
+    this._hover = null;
+    if (series.length === 0) {
       this._graphConfigured = false;
       if (this._graphCard) this._graphCard.style.display = 'none';
       return;
     }
+    const entities = series.map(s => s.spec);
     if (!this._graphCard) {
       this._graphCard = document.createElement('mini-graph-card') as MiniGraphCardElement;
+      // Track the hover with mousemove, not mouseover: moving between two
+      // points inside mini-graph-card's shadow root retargets both boundary
+      // events to the host, which suppresses them, so only mousemove is seen
+      // out here. Boundary events do fire before the mousemove that caused
+      // them, so the tooltip is already current when this runs.
+      this._graphCard.addEventListener('mousemove', this._onGraphHover);
+      this._graphCard.addEventListener('mouseleave', this._onGraphLeave);
     }
     // Race whenDefined against a 2s timeout so we degrade gracefully
     // when mini-graph-card isn't installed.
@@ -243,7 +272,17 @@ export class AirQualityCard extends LitElement {
           smoothing: true,
           hour24: true,
           height: 60,
-          show: { name: false, icon: false, state: true, legend: true, labels: false, fill: 'fade' },
+          // The card renders the hovered value itself in the temp/humidity
+          // stats, so mini-graph-card's own state row and axis labels stay off.
+          show: {
+            name: false,
+            icon: false,
+            state: false,
+            legend: true,
+            labels: false,
+            labels_secondary: false,
+            fill: 'fade',
+          },
         });
         this._graphConfigured = true;
         this._graphCard!.style.display = 'block';
@@ -263,6 +302,29 @@ export class AirQualityCard extends LitElement {
         }
         this.requestUpdate();
       });
+  }
+
+  // Mirror mini-graph-card's hover state into our own stats. Arrow fields so
+  // `this` is the card when they run as listeners.
+  private _onGraphHover = (): void => {
+    const next = graphHoverReadout(this._graphCard?.tooltip, this._graphSeries);
+    if (!sameGraphHover(next, this._hover)) this._hover = next;
+  };
+
+  private _onGraphLeave = (): void => {
+    this._hover = null;
+  };
+
+  // What a hovered stat shows in place of its name: the point's time range,
+  // or our own wording when the hover came from a legend entry.
+  private _hoverLabel(hover: GraphHoverReadout): string {
+    return hover.isCurrent ? this.t('stats.current') : hover.time;
+  }
+
+  public override disconnectedCallback(): void {
+    super.disconnectedCallback();
+    // A card removed mid-hover must not come back showing a stale reading.
+    this._hover = null;
   }
 
   protected override updated(changed: PropertyValues): void {
@@ -529,6 +591,13 @@ export class AirQualityCard extends LitElement {
     headlineAriaLabel: string,
   ): TemplateResult {
     const showSlash = !hasAqi && displayValue !== '--';
+
+    // While a graph point is hovered, the stat it belongs to shows that point's
+    // value and its time range in place of the live value and the stat name.
+    const hoverTemp = this._hover?.key === 'temp' ? this._hover : null;
+    const hoverHumid = this._hover?.key === 'humid' ? this._hover : null;
+    const tempShown = hoverTemp ? hoverTemp.value : temp;
+    const humidShown = hoverHumid ? hoverHumid.value : humid;
     return html`
       <div class="expanded-header">
         <div class="header">
@@ -555,14 +624,18 @@ export class AirQualityCard extends LitElement {
             ${hasEntity(config.temp_entity)
               ? html`
             <div
-              class=${classMap({ stat: true, empty: temp == null })}
-              aria-label="Temperature: ${this._formatNum(temp, 1)} ${tempUnit}"
+              class=${classMap({ stat: true, empty: tempShown == null })}
+              aria-label="Temperature: ${this._formatNum(tempShown, 1)} ${tempUnit}${
+                hoverTemp ? `, ${this._hoverLabel(hoverTemp)}` : ''}"
             >
               <div class="stat-value">
-                <span class="num">${this._formatNum(temp, 1)}</span>
-                <span class="unit">${temp == null ? '' : tempUnit}</span>
+                <span class="num">${this._formatNum(tempShown, 1)}</span>
+                <span class="unit">${tempShown == null ? '' : tempUnit}</span>
               </div>
-              <div class="stat-label" aria-hidden="true">${this.t('stats.temp')}</div>
+              <div
+                class=${classMap({ 'stat-label': true, 'stat-time': !!hoverTemp })}
+                aria-hidden="true"
+              >${hoverTemp ? this._hoverLabel(hoverTemp) : this.t('stats.temp')}</div>
             </div>`
               : nothing}
             ${hasEntity(config.temp_entity) && hasEntity(config.humid_entity)
@@ -571,14 +644,18 @@ export class AirQualityCard extends LitElement {
             ${hasEntity(config.humid_entity)
               ? html`
             <div
-              class=${classMap({ stat: true, empty: humid == null })}
-              aria-label="Humidity: ${this._formatNum(humid, 0)} ${humidUnit}"
+              class=${classMap({ stat: true, empty: humidShown == null })}
+              aria-label="Humidity: ${this._formatNum(humidShown, 0)} ${humidUnit}${
+                hoverHumid ? `, ${this._hoverLabel(hoverHumid)}` : ''}"
             >
               <div class="stat-value">
-                <span class="num">${this._formatNum(humid, 0)}</span>
-                <span class="unit">${humid == null ? '' : humidUnit}</span>
+                <span class="num">${this._formatNum(humidShown, 0)}</span>
+                <span class="unit">${humidShown == null ? '' : humidUnit}</span>
               </div>
-              <div class="stat-label" aria-hidden="true">${this.t('stats.humidity')}</div>
+              <div
+                class=${classMap({ 'stat-label': true, 'stat-time': !!hoverHumid })}
+                aria-hidden="true"
+              >${hoverHumid ? this._hoverLabel(hoverHumid) : this.t('stats.humidity')}</div>
             </div>`
               : nothing}
           </div>`

@@ -5,6 +5,9 @@
 
 import type {
   AqiBand,
+  GraphHoverReadout,
+  GraphSeriesKey,
+  GraphTooltip,
   ScoreBand,
   ScoreResult,
   ThresholdResult,
@@ -103,7 +106,7 @@ export const STRINGS: Record<string, Record<string, unknown>> = {
     topName: { aqi: 'AQI Sensor', score: 'Calculated Score' },
     subtitle: 'Climate · Air Quality',
     ring: { aqi: 'AQI', score: 'SCORE' },
-    stats: { temp: 'TEMP', humidity: 'HUMIDITY' },
+    stats: { temp: 'TEMP', humidity: 'HUMIDITY', current: 'Current' },
     advice: {
       vocHigh:     'VOCs detected',
       co2High:     'CO2 high - open a window',
@@ -141,6 +144,51 @@ export function entitiesWithHistory(
     if (Array.isArray(series) && series.length > 0) out.add(id);
   }
   return out;
+}
+
+// Maps mini-graph-card's hover state onto the card's own temp/humidity stats,
+// given the series the graph was mounted with (in graph order).
+//
+// mini-graph-card's `tooltip` property is internal, so anything unexpected -
+// a missing value, a non-numeric state, an index we didn't graph - returns
+// null and the card keeps showing live values instead of rendering garbage.
+export function graphHoverReadout(
+  tooltip: GraphTooltip | undefined,
+  series: GraphSeriesKey[],
+): GraphHoverReadout | null {
+  if (!tooltip || typeof tooltip.entity !== 'number') return null;
+  const key = series[tooltip.entity];
+  if (!key) return null;
+
+  const raw = tooltip.value;
+  if (raw == null) return null;
+  const value = typeof raw === 'number' ? raw : parseFloat(raw);
+  if (!isFinite(value)) return null;
+
+  // A labelled tooltip means the hover came from a legend entry, not a point,
+  // so the value is the entity's current state and there is no range to show.
+  // The label itself is mini-graph-card's own untranslated string, so it is
+  // reported as a flag and the card supplies the wording.
+  const time =
+    Array.isArray(tooltip.time) && tooltip.time.length === 2
+      ? `${tooltip.time[0]} - ${tooltip.time[1]}`
+      : '';
+
+  return { key, value, time, isCurrent: !!tooltip.label };
+}
+
+// True when two readouts would render identically. The graph is tracked with
+// mousemove, so this keeps a re-render to the moves that actually change what
+// the stats show.
+export function sameGraphHover(
+  a: GraphHoverReadout | null,
+  b: GraphHoverReadout | null,
+): boolean {
+  if (a === b) return true;
+  if (!a || !b) return false;
+  return (
+    a.key === b.key && a.value === b.value && a.time === b.time && a.isCurrent === b.isCurrent
+  );
 }
 
 // True when an entity is actually configured: a present, non-empty string.

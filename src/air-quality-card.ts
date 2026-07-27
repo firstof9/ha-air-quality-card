@@ -81,6 +81,7 @@ export class AirQualityCard extends LitElement {
   private _graphConfigured = false;
   // Card stats fed by each graph series, in the order they were mounted.
   private _graphSeries: GraphSeriesKey[] = [];
+  private _hitAreaWidened = false;
   // Point currently hovered on the graph, shown in place of the live stat.
   @state() private _hover: GraphHoverReadout | null = null;
   // `${temp}|${humid}` of the entity set we last probed/configured the graph
@@ -333,6 +334,41 @@ export class AirQualityCard extends LitElement {
     return hover.isCurrent ? this.t('stats.current') : hover.time;
   }
 
+  // mini-graph-card's hover targets are circles of r = line_width, so at our
+  // 2px line the readout only appears within about 1.5px of the line. A
+  // transparent stroke widens the target to about 4px without moving anything
+  // or changing the graph's layout. Wider than this and, where the temp and
+  // humidity lines run close together, the series drawn on top starts winning
+  // hovers aimed at the other one.
+  //
+  // The fill goes transparent along with the stroke. mini-graph-card fills its
+  // points with --primary-background-color and draws the series color as a 1px
+  // stroke around them, so dropping only the stroke would leave a row of
+  // background-colored discs punched through the line whenever the card is
+  // hovered. The card's own stats are the hover feedback now, so the points
+  // don't need to paint anything.
+  //
+  // mini-graph-card keeps its rules in an adopted stylesheet, which outranks a
+  // <style> appended to its shadow tree, so this has to be adopted as well.
+  private _widenGraphHitArea(): void {
+    if (this._hitAreaWidened) return;
+    const root = this._graphCard?.shadowRoot;
+    if (!root) return;
+    // One attempt either way: reaching into another card's styles is best
+    // effort, and the stock hit area still works if it fails.
+    this._hitAreaWidened = true;
+    if (!('adoptedStyleSheets' in root)) return;
+    try {
+      const sheet = new CSSStyleSheet();
+      sheet.replaceSync(
+        '.line--point { fill: transparent; stroke: transparent; stroke-width: 8px; pointer-events: all; }',
+      );
+      root.adoptedStyleSheets = [...root.adoptedStyleSheets, sheet];
+    } catch {
+      // Older engines without constructable stylesheets: leave it alone.
+    }
+  }
+
   public override disconnectedCallback(): void {
     super.disconnectedCallback();
     // A card removed mid-hover must not come back showing a stale reading.
@@ -346,6 +382,9 @@ export class AirQualityCard extends LitElement {
         this._graphCard.hass = this.hass;
       }
     }
+    // The graph card only grows a shadow root once it has rendered, which is
+    // after _configureGraph runs, so this waits for an update to land.
+    if (this._graphConfigured) this._widenGraphHitArea();
   }
 
   private _toggle(): void {

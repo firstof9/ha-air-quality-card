@@ -50,6 +50,7 @@ const ALLOWED_DOMAINS: Record<string, string[]> = {
   pm10_entity:   ['sensor.'],
   voc_entity:    ['sensor.'],
   co2_entity:    ['sensor.'],
+  nox_entity:    ['sensor.'],
   radon_entity:  ['sensor.'],
 };
 
@@ -87,6 +88,9 @@ export class AirQualityCard extends LitElement {
   // for. Lets us skip re-probing on every hass tick but re-probe when the
   // configured graph entities change.
   private _graphProbeKey?: string;
+  // Bumped for every probe started and every entity-set change, so a response
+  // that arrives after the config moved on gets dropped.
+  private _graphProbeSeq = 0;
 
   public static getConfigElement(): HTMLElement {
     return document.createElement('air-quality-card-editor');
@@ -105,6 +109,7 @@ export class AirQualityCard extends LitElement {
       pm10_entity: '',
       voc_entity: '',
       co2_entity: '',
+      nox_entity: '',
       radon_entity: '',
     };
   }
@@ -163,10 +168,12 @@ export class AirQualityCard extends LitElement {
   }
 
   private _setupGraphCard(config: AirQualityCardConfig): void {
-    // New entity set → reset so we re-probe and re-show.
+    // New entity set → reset so we re-probe and re-show, and retire any probe
+    // still in flight for the old set so its response can't mount stale series.
     const key = `${config.temp_entity ?? ''}|${config.humid_entity ?? ''}`;
     if (key !== this._graphProbeKey) {
       this._graphProbeKey = undefined;
+      this._graphProbeSeq++;
       this._graphConfigured = false;
       if (this._graphCard) this._graphCard.style.display = 'none';
     }
@@ -211,6 +218,9 @@ export class AirQualityCard extends LitElement {
       return;
     }
 
+    // Responses can arrive out of order, so stamp this probe and drop the
+    // response if a newer probe has started since.
+    const probe = ++this._graphProbeSeq;
     const hours = 24;
     const end = new Date();
     const start = new Date(end.getTime() - hours * 3600_000);
@@ -224,10 +234,12 @@ export class AirQualityCard extends LitElement {
         no_attributes: true,
       })
       .then(resp => {
+        if (probe !== this._graphProbeSeq) return;
         const live = entitiesWithHistory(resp, candidates.map(c => c.id));
         this._configureGraph(candidates.filter(c => live.has(c.id)));
       })
       .catch(() => {
+        if (probe !== this._graphProbeSeq) return;
         // Probe failed — fall back to including all candidates (prior behavior),
         // so a transient history error never hides a working graph.
         this._configureGraph(candidates);
@@ -315,6 +327,12 @@ export class AirQualityCard extends LitElement {
   private _onGraphLeave = (): void => {
     this._hover = null;
   };
+
+  // What a hovered stat shows in place of its name: the point's time range,
+  // or our own wording when the hover came from a legend entry.
+  private _hoverLabel(hover: GraphHoverReadout): string {
+    return hover.isCurrent ? this.t('stats.current') : hover.time;
+  }
 
   // mini-graph-card's hover targets are circles of r = line_width, so at our
   // 2px line the readout only appears within about 1.5px of the line. A
@@ -659,7 +677,7 @@ export class AirQualityCard extends LitElement {
             <div
               class=${classMap({ stat: true, empty: tempShown == null })}
               aria-label="Temperature: ${this._formatNum(tempShown, 1)} ${tempUnit}${
-                hoverTemp ? `, ${hoverTemp.time}` : ''}"
+                hoverTemp ? `, ${this._hoverLabel(hoverTemp)}` : ''}"
             >
               <div class="stat-value">
                 <span class="num">${this._formatNum(tempShown, 1)}</span>
@@ -668,7 +686,7 @@ export class AirQualityCard extends LitElement {
               <div
                 class=${classMap({ 'stat-label': true, 'stat-time': !!hoverTemp })}
                 aria-hidden="true"
-              >${hoverTemp ? hoverTemp.time : this.t('stats.temp')}</div>
+              >${hoverTemp ? this._hoverLabel(hoverTemp) : this.t('stats.temp')}</div>
             </div>`
               : nothing}
             ${hasEntity(config.temp_entity) && hasEntity(config.humid_entity)
@@ -679,7 +697,7 @@ export class AirQualityCard extends LitElement {
             <div
               class=${classMap({ stat: true, empty: humidShown == null })}
               aria-label="Humidity: ${this._formatNum(humidShown, 0)} ${humidUnit}${
-                hoverHumid ? `, ${hoverHumid.time}` : ''}"
+                hoverHumid ? `, ${this._hoverLabel(hoverHumid)}` : ''}"
             >
               <div class="stat-value">
                 <span class="num">${this._formatNum(humidShown, 0)}</span>
@@ -688,7 +706,7 @@ export class AirQualityCard extends LitElement {
               <div
                 class=${classMap({ 'stat-label': true, 'stat-time': !!hoverHumid })}
                 aria-hidden="true"
-              >${hoverHumid ? hoverHumid.time : this.t('stats.humidity')}</div>
+              >${hoverHumid ? this._hoverLabel(hoverHumid) : this.t('stats.humidity')}</div>
             </div>`
               : nothing}
           </div>`

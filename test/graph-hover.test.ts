@@ -12,7 +12,7 @@ describe('graphHoverReadout', () => {
       { entity: 0, value: 67.34, time: ['20:14', '20:44'] },
       series,
     );
-    assert.deepEqual(got, { key: 'temp', value: 67.34, time: '20:14 - 20:44' });
+    assert.deepEqual(got, { key: 'temp', value: 67.34, time: '20:14 - 20:44', isCurrent: false });
   });
 
   test('maps the second series onto humidity', () => {
@@ -20,7 +20,7 @@ describe('graphHoverReadout', () => {
       { entity: 1, value: 44.09, time: ['20:14', '20:44'] },
       series,
     );
-    assert.deepEqual(got, { key: 'humid', value: 44.09, time: '20:14 - 20:44' });
+    assert.deepEqual(got, { key: 'humid', value: 44.09, time: '20:14 - 20:44', isCurrent: false });
   });
 
   test('follows the series order when temperature is not graphed', () => {
@@ -28,25 +28,32 @@ describe('graphHoverReadout', () => {
       { entity: 0, value: 44.09, time: ['20:14', '20:44'] },
       ['humid'],
     );
-    assert.deepEqual(got, { key: 'humid', value: 44.09, time: '20:14 - 20:44' });
+    assert.deepEqual(got, { key: 'humid', value: 44.09, time: '20:14 - 20:44', isCurrent: false });
   });
 
-  test('prefers the tooltip label over the time range', () => {
+  test('flags a legend hover instead of passing through its English label', () => {
+    // mini-graph-card hardcodes 'Current' here; the card renders its own
+    // translated wording, so the label must not reach the UI.
     const got = graphHoverReadout(
       { entity: 0, value: 70.9, time: ['20:14', '20:44'], label: 'Current' },
       series,
     );
-    assert.deepEqual(got, { key: 'temp', value: 70.9, time: 'Current' });
+    assert.deepEqual(got, { key: 'temp', value: 70.9, time: '20:14 - 20:44', isCurrent: true });
+  });
+
+  test('a point hover is not flagged as current', () => {
+    const got = graphHoverReadout({ entity: 0, value: 67.34, time: ['20:14', '20:44'] }, series);
+    assert.equal(got?.isCurrent, false);
   });
 
   test('parses a string value', () => {
     const got = graphHoverReadout({ entity: 1, value: '44.09', time: ['20:14', '20:44'] }, series);
-    assert.deepEqual(got, { key: 'humid', value: 44.09, time: '20:14 - 20:44' });
+    assert.deepEqual(got, { key: 'humid', value: 44.09, time: '20:14 - 20:44', isCurrent: false });
   });
 
   test('tolerates a missing time range', () => {
     const got = graphHoverReadout({ entity: 0, value: 67.34 }, series);
-    assert.deepEqual(got, { key: 'temp', value: 67.34, time: '' });
+    assert.deepEqual(got, { key: 'temp', value: 67.34, time: '', isCurrent: false });
   });
 
   test('returns null when nothing is hovered', () => {
@@ -77,7 +84,7 @@ describe('graphHoverReadout', () => {
 });
 
 describe('sameGraphHover', () => {
-  const readout = { key: 'temp' as const, value: 67.34, time: '20:14 - 20:44' };
+  const readout = { key: 'temp' as const, value: 67.34, time: '20:14 - 20:44', isCurrent: false };
 
   test('two nulls are the same', () => {
     assert.equal(sameGraphHover(null, null), true);
@@ -96,5 +103,6 @@ describe('sameGraphHover', () => {
     assert.equal(sameGraphHover(readout, { ...readout, key: 'humid' }), false);
     assert.equal(sameGraphHover(readout, { ...readout, value: 67.35 }), false);
     assert.equal(sameGraphHover(readout, { ...readout, time: '20:44 - 21:14' }), false);
+    assert.equal(sameGraphHover(readout, { ...readout, isCurrent: true }), false);
   });
 });

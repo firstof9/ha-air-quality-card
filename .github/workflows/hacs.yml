@@ -9,6 +9,9 @@ permissions:
 jobs:
   hacs:
     name: HACS Action
+    # The action validates the head repository. A fork has no releases, and
+    # hacs.json sets hide_default_branch, so a fork can never be compliant.
+    if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     steps:
     - uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d # v2.19.4

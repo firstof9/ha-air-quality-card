@@ -315,6 +315,12 @@ export class AirQualityCard extends LitElement {
     this._hover = null;
   };
 
+  // What a hovered stat shows in place of its name: the point's time range,
+  // or our own wording when the hover came from a legend entry.
+  private _hoverLabel(hover: GraphHoverReadout): string {
+    return hover.isCurrent ? this.t('stats.current') : hover.time;
+  }
+
   public override disconnectedCallback(): void {
     super.disconnectedCallback();
     // A card removed mid-hover must not come back showing a stale reading.
@@ -620,7 +626,7 @@ export class AirQualityCard extends LitElement {
             <div
               class=${classMap({ stat: true, empty: tempShown == null })}
               aria-label="Temperature: ${this._formatNum(tempShown, 1)} ${tempUnit}${
-                hoverTemp ? `, ${hoverTemp.time}` : ''}"
+                hoverTemp ? `, ${this._hoverLabel(hoverTemp)}` : ''}"
             >
               <div class="stat-value">
                 <span class="num">${this._formatNum(tempShown, 1)}</span>
@@ -629,7 +635,7 @@ export class AirQualityCard extends LitElement {
               <div
                 class=${classMap({ 'stat-label': true, 'stat-time': !!hoverTemp })}
                 aria-hidden="true"
-              >${hoverTemp ? hoverTemp.time : this.t('stats.temp')}</div>
+              >${hoverTemp ? this._hoverLabel(hoverTemp) : this.t('stats.temp')}</div>
             </div>`
               : nothing}
             ${hasEntity(config.temp_entity) && hasEntity(config.humid_entity)
@@ -640,7 +646,7 @@ export class AirQualityCard extends LitElement {
             <div
               class=${classMap({ stat: true, empty: humidShown == null })}
               aria-label="Humidity: ${this._formatNum(humidShown, 0)} ${humidUnit}${
-                hoverHumid ? `, ${hoverHumid.time}` : ''}"
+                hoverHumid ? `, ${this._hoverLabel(hoverHumid)}` : ''}"
             >
               <div class="stat-value">
                 <span class="num">${this._formatNum(humidShown, 0)}</span>
@@ -649,7 +655,7 @@ export class AirQualityCard extends LitElement {
               <div
                 class=${classMap({ 'stat-label': true, 'stat-time': !!hoverHumid })}
                 aria-hidden="true"
-              >${hoverHumid ? hoverHumid.time : this.t('stats.humidity')}</div>
+              >${hoverHumid ? this._hoverLabel(hoverHumid) : this.t('stats.humidity')}</div>
             </div>`
               : nothing}
           </div>`

@@ -106,7 +106,7 @@ export const STRINGS: Record<string, Record<string, unknown>> = {
     topName: { aqi: 'AQI Sensor', score: 'Calculated Score' },
     subtitle: 'Climate · Air Quality',
     ring: { aqi: 'AQI', score: 'SCORE' },
-    stats: { temp: 'TEMP', humidity: 'HUMIDITY' },
+    stats: { temp: 'TEMP', humidity: 'HUMIDITY', current: 'Current' },
     advice: {
       vocHigh:     'VOCs detected',
       co2High:     'CO2 high - open a window',
@@ -165,15 +165,16 @@ export function graphHoverReadout(
   const value = typeof raw === 'number' ? raw : parseFloat(raw);
   if (!isFinite(value)) return null;
 
-  // Hovering a legend entry labels the readout ("Current") instead of
-  // reporting a time range; mirror that rather than showing both.
-  const time = tooltip.label
-    ? tooltip.label
-    : Array.isArray(tooltip.time) && tooltip.time.length === 2
+  // A labelled tooltip means the hover came from a legend entry, not a point,
+  // so the value is the entity's current state and there is no range to show.
+  // The label itself is mini-graph-card's own untranslated string, so it is
+  // reported as a flag and the card supplies the wording.
+  const time =
+    Array.isArray(tooltip.time) && tooltip.time.length === 2
       ? `${tooltip.time[0]} - ${tooltip.time[1]}`
       : '';
 
-  return { key, value, time };
+  return { key, value, time, isCurrent: !!tooltip.label };
 }
 
 // True when two readouts would render identically. The graph is tracked with
@@ -185,7 +186,9 @@ export function sameGraphHover(
 ): boolean {
   if (a === b) return true;
   if (!a || !b) return false;
-  return a.key === b.key && a.value === b.value && a.time === b.time;
+  return (
+    a.key === b.key && a.value === b.value && a.time === b.time && a.isCurrent === b.isCurrent
+  );
 }
 
 // True when an entity is actually configured: a present, non-empty string.

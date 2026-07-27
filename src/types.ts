@@ -55,9 +55,12 @@ export interface GraphTooltip {
 export interface GraphHoverReadout {
   key: GraphSeriesKey;
   value: number;
-  // Either the point's time range ("20:14 - 20:44") or mini-graph-card's own
-  // tooltip label ("Current" when hovering a legend entry). Empty when neither.
+  // The point's time range ("20:14 - 20:44"), empty when there isn't one.
   time: string;
+  // mini-graph-card labels the readout instead of reporting a range when the
+  // hover came from a legend entry rather than a point, and that label is
+  // hardcoded English. The card renders its own translated string for it.
+  isCurrent: boolean;
 }
 
 export interface ThresholdResult {

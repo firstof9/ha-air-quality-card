@@ -50,6 +50,7 @@ const ALLOWED_DOMAINS: Record<string, string[]> = {
   pm10_entity:   ['sensor.'],
   voc_entity:    ['sensor.'],
   co2_entity:    ['sensor.'],
+  nox_entity:    ['sensor.'],
   radon_entity:  ['sensor.'],
 };
 
@@ -104,6 +105,7 @@ export class AirQualityCard extends LitElement {
       pm10_entity: '',
       voc_entity: '',
       co2_entity: '',
+      nox_entity: '',
       radon_entity: '',
     };
   }

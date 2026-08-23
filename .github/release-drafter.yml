@@ -3,87 +3,101 @@ tag-template: "$RESOLVED_VERSION"
 change-template: "- $TITLE @$AUTHOR (#$NUMBER)"
 sort-direction: ascending
 
-version-resolver:
-  major:
-    labels:
-      - "breaking-change"
-  minor:
-    labels:
-      - "feature"
-      - "feat"
-      - "enhancement"
-  patch:
-    labels:
-      - "fix"
-      - "bug"
-      - "docs"
-      - "documentation"
-      - "chore"
-      - "refactor"
-      - "ci"
-      - "dependencies"
-  default: patch
-
 categories:
+  # 1. Version Resolver Categories (New Schema)
+  - type: "version-resolver"
+    when:
+      labels:
+        - "breaking-change"
+    semver-increment: "major"
+
+  - type: "version-resolver"
+    when:
+      labels:
+        - "feature"
+        - "feat"
+        - "enhancement"
+    semver-increment: "minor"
+
+  - type: "version-resolver"
+    when:
+      labels:
+        - "fix"
+        - "bug"
+        - "docs"
+        - "documentation"
+        - "chore"
+        - "refactor"
+        - "ci"
+        - "dependencies"
+    semver-increment: "patch"
+
+  - type: "version-resolver"
+    semver-increment: "patch" # Default fallback
+
+  # 2. Changelog Grouping Categories (Updated 'when' syntax)
   - title: '✨ Enhancements'
-    labels:
-      - 'enhancement'
+    when:
+      labels:
+        - 'enhancement'
   - title: '🚀 Features'
-    labels:
-      - 'feature'
-      - 'feat'
+    when:
+      labels:
+        - 'feature'
+        - 'feat'
   - title: '🐛 Bug Fixes'
-    labels:
-      - 'fix'
-      - 'bug'
+    when:
+      labels:
+        - 'fix'
+        - 'bug'
   - title: '📖 Documentation'
-    labels:
-      - 'docs'
-      - 'documentation'
+    when:
+      labels:
+        - 'docs'
+        - 'documentation'
   - title: '🧰 Maintenance'
-    labels:
-      - 'chore'
-      - 'refactor'
-      - 'ci'
+    when:
+      labels:
+        - 'chore'
+        - 'refactor'
+        - 'ci'
   - title: '📦 Dependencies'
     collapse-after: 2
-    labels:
-      - 'dependencies'
+    when:
+      labels:
+        - 'dependencies'
 
-# Auto-apply labels based on PR title (conventional commits) so the
-# categories above actually populate without anyone touching labels by
-# hand. Conventional-commit titles are already enforced by lint-pr-title.
 autolabeler:
   - label: 'feature'
     title:
-      - '/^feat(\(.+\))?:/i'
+      - '/^feat(\\(.+\\))?:/i'
   - label: 'fix'
     title:
-      - '/^fix(\(.+\))?:/i'
+      - '/^fix(\\(.+\\))?:/i'
   - label: 'docs'
     title:
-      - '/^docs(\(.+\))?:/i'
+      - '/^docs(\\(.+\\))?:/i'
   - label: 'chore'
     title:
-      - '/^chore(\(.+\))?:/i'
+      - '/^chore(\\(.+\\))?:/i'
   - label: 'refactor'
     title:
-      - '/^refactor(\(.+\))?:/i'
+      - '/^refactor(\\(.+\\))?:/i'
   - label: 'ci'
     title:
-      - '/^ci(\(.+\))?:/i'
-      - '/^build(\(.+\))?:/i'
+      - '/^ci(\\(.+\\))?:/i'
+      - '/^build(\\(.+\\))?:/i'
   - label: 'enhancement'
     title:
-      - '/^perf(\(.+\))?:/i'
+      - '/^perf(\\(.+\\))?:/i'
   - label: 'chore'
     title:
-      - '/^style(\(.+\))?:/i'
-      - '/^test(\(.+\))?:/i'
+      - '/^style(\\(.+\\))?:/i'
+      - '/^test(\\(.+\\))?:/i'
   - label: 'dependencies'
     title:
-      - '/^build\(deps\)(\(.+\))?:/i'
-      - '/^deps(\(.+\))?:/i'
+      - '/^build\\(deps\\)(\\(.+\\))?:/i'
+      - '/^deps(\\(.+\\))?:/i'
 
 template: |
   ## Changes

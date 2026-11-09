@@ -20,7 +20,7 @@
     "esbuild": "^0.28.2",
     "rollup": "^4.67.5",
     "rollup-plugin-esbuild": "^6.2.1",
-    "tslib": "^2.6.0",
+    "tslib": "^2.9.1",
     "tsx": "^4.23.15",
     "typescript": "^7.0.2"
   },

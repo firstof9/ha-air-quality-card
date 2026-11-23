@@ -1,0 +1,753 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Air Quality Card — Home Assistant Custom Card</title>
+  <meta name="description" content="Interactive demo and documentation for ha-air-quality-card — a modern, customizable Home Assistant Lovelace card for indoor air quality." />
+  <style>
+    :root {
+      --bg: #0f1117;
+      --surface: #181b24;
+      --surface-2: #222634;
+      --border: rgba(255, 255, 255, 0.1);
+      --text: #f3f4f6;
+      --muted: #9ca3af;
+      --accent: #38bdf8;
+      --accent-soft: rgba(56, 189, 248, 0.15);
+      --code-bg: #12141c;
+      --ha-card-background: #1c1c1c;
+      --card-background-color: #1c1c1c;
+      --primary-text-color: #ffffff;
+      --secondary-text-color: #9e9e9e;
+      --accent-color: #38bdf8;
+      --divider-color: #333333;
+      --success-color: #4caf50;
+      --warning-color: #ff9800;
+      --error-color: #f44336;
+    }
+
+    [data-theme="light"] {
+      --bg: #f4f6fa;
+      --surface: #ffffff;
+      --surface-2: #eef1f7;
+      --border: rgba(0, 0, 0, 0.1);
+      --text: #111827;
+      --muted: #4b5563;
+      --accent: #0284c7;
+      --accent-soft: rgba(2, 132, 199, 0.12);
+      --code-bg: #f8fafc;
+      --ha-card-background: #ffffff;
+      --card-background-color: #ffffff;
+      --primary-text-color: #111827;
+      --secondary-text-color: #6b7280;
+      --divider-color: #d1d5db;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+    }
+
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    header {
+      border-bottom: 1px solid var(--border);
+      background: var(--surface);
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      backdrop-filter: blur(10px);
+    }
+
+    .nav {
+      max-width: 1120px;
+      margin: 0 auto;
+      padding: 0.9rem 1.25rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+
+    .brand {
+      font-weight: 700;
+      font-size: 1.1rem;
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .brand-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: var(--accent);
+      display: inline-block;
+    }
+
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      flex-wrap: wrap;
+      font-size: 0.92rem;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.45rem 0.85rem;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: var(--surface-2);
+      color: var(--text);
+      font-size: 0.88rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: border-color 0.15s, background 0.15s;
+    }
+
+    .btn:hover { border-color: var(--accent); text-decoration: none; }
+    .btn-primary { background: var(--accent); color: #0b1120; border-color: var(--accent); font-weight: 600; }
+    [data-theme="light"] .btn-primary { color: #ffffff; }
+    .btn-primary:hover { opacity: 0.92; }
+
+    main {
+      max-width: 1120px;
+      margin: 0 auto;
+      padding: 2rem 1.25rem 4rem;
+    }
+
+    .hero {
+      text-align: center;
+      max-width: 760px;
+      margin: 0 auto 2.5rem;
+    }
+
+    .hero h1 {
+      font-size: clamp(1.9rem, 4vw, 2.75rem);
+      margin: 0 0 0.75rem;
+      letter-spacing: -0.02em;
+    }
+
+    .hero p {
+      color: var(--muted);
+      font-size: 1.05rem;
+      margin: 0 0 1.25rem;
+    }
+
+    .hero-actions {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+    }
+
+    section { margin-top: 3rem; }
+    section h2 {
+      font-size: 1.45rem;
+      margin: 0 0 1rem;
+      letter-spacing: -0.01em;
+    }
+
+    .demo-shell {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 1.25rem;
+    }
+
+    .tabs {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      margin-bottom: 1rem;
+    }
+
+    .tab {
+      padding: 0.4rem 0.8rem;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: var(--surface-2);
+      color: var(--muted);
+      font-size: 0.85rem;
+      font-weight: 500;
+      cursor: pointer;
+    }
+
+    .tab.active {
+      background: var(--accent-soft);
+      color: var(--accent);
+      border-color: var(--accent);
+    }
+
+    .demo-grid {
+      display: grid;
+      grid-template-columns: minmax(280px, 1.1fr) minmax(280px, 0.9fr);
+      gap: 1.25rem;
+      align-items: start;
+    }
+
+    @media (max-width: 820px) {
+      .demo-grid { grid-template-columns: 1fr; }
+    }
+
+    .preview-stage {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1rem;
+      min-height: 240px;
+      display: flex;
+      flex-direction: column;
+      gap: 0.85rem;
+    }
+
+    .state-controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .state-pills { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+
+    .pill {
+      padding: 0.28rem 0.65rem;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--muted);
+      font-size: 0.8rem;
+      cursor: pointer;
+    }
+
+    .pill.active {
+      border-color: var(--accent);
+      color: var(--accent);
+      background: var(--accent-soft);
+    }
+
+    #card-mount {
+      width: 100%;
+    }
+
+    .yaml-panel {
+      background: var(--code-bg);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+
+    .yaml-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0.6rem 0.9rem;
+      border-bottom: 1px solid var(--border);
+      font-size: 0.82rem;
+      color: var(--muted);
+    }
+
+    pre {
+      margin: 0;
+      padding: 0.9rem;
+      overflow-x: auto;
+      font-size: 0.84rem;
+      line-height: 1.5;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    }
+
+    .cards-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 1rem;
+    }
+
+    .info-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.15rem;
+    }
+
+    .info-card h3 { margin: 0 0 0.45rem; font-size: 1.02rem; }
+    .info-card p, .info-card ol { margin: 0; color: var(--muted); font-size: 0.92rem; }
+    .info-card ol { padding-left: 1.2rem; }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+      font-size: 0.92rem;
+    }
+
+    th, td {
+      text-align: left;
+      padding: 0.7rem 0.9rem;
+      border-bottom: 1px solid var(--border);
+    }
+
+    th { background: var(--surface-2); font-weight: 600; }
+    tr:last-child td { border-bottom: none; }
+
+    code {
+      background: var(--surface-2);
+      padding: 0.12rem 0.35rem;
+      border-radius: 4px;
+      font-size: 0.86em;
+    }
+
+    footer {
+      border-top: 1px solid var(--border);
+      text-align: center;
+      padding: 1.75rem 1.25rem;
+      color: var(--muted);
+      font-size: 0.88rem;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="nav">
+      <div class="brand"><span class="brand-dot"></span> Air Quality Card</div>
+      <div class="nav-links">
+        <a href="#demo">Live Demo</a>
+        <a href="#install">Install</a>
+        <a href="#pollutants">Pollutants</a>
+        <a href="https://github.com/firstof9/ha-air-quality-card" target="_blank" rel="noopener">GitHub</a>
+        <button class="btn" id="theme-toggle" type="button">Light Theme</button>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <div class="hero">
+      <h1>Air Quality Card for Home Assistant</h1>
+      <p>A modern, customizable Lovelace card for indoor air quality with AQI or calculated score modes, multi-pollutant tiles, interactive expand/collapse, and optional climate trend graphs.</p>
+      <div class="hero-actions">
+        <a href="https://my.home-assistant.io/redirect/hacs_repository/?owner=firstof9&repository=ha-air-quality-card&category=plugin" target="_blank" rel="noopener">
+          <img src="https://my.home-assistant.io/badges/hacs_repository.svg" alt="Open in Home Assistant Community Store" />
+        </a>
+        <a class="btn btn-primary" href="#demo">Try Interactive Demo</a>
+        <a class="btn" href="https://github.com/firstof9/ha-air-quality-card/releases/latest" target="_blank" rel="noopener">Latest Release</a>
+      </div>
+    </div>
+
+    <section id="demo">
+      <h2>Interactive Live Demo</h2>
+      <div class="demo-shell">
+        <div class="tabs" id="preset-tabs" role="tablist"></div>
+        <div class="demo-grid">
+          <div class="preview-stage">
+            <div class="state-controls">
+              <div class="state-pills" id="state-pills"></div>
+              <span style="font-size:0.78rem;color:var(--muted);">Rendered live by <code>&lt;air-quality-card&gt;</code></span>
+            </div>
+            <div id="card-mount"></div>
+          </div>
+          <div class="yaml-panel">
+            <div class="yaml-header">
+              <span>Card YAML Configuration</span>
+              <button class="btn" id="copy-yaml" type="button" style="padding:0.25rem 0.6rem;font-size:0.78rem;">Copy</button>
+            </div>
+            <pre id="yaml-code"></pre>
+          </div>
+        </div>
+        <p style="margin:0.9rem 0 0;font-size:0.84rem;color:var(--muted);">
+          <strong>Note:</strong> These previews use simulated entity states and standalone element shims. Click the card header to test expand/collapse. Optional <code>mini-graph-card</code> climate trend graphs render automatically inside Home Assistant when installed.
+        </p>
+      </div>
+    </section>
+
+    <section id="install">
+      <h2>Installation</h2>
+      <div class="cards-grid">
+        <div class="info-card">
+          <h3>HACS (Recommended)</h3>
+          <ol>
+            <li>Click the Home Assistant badge above, or open <strong>HACS</strong> in Home Assistant.</li>
+            <li>Open the menu (three dots) &rarr; <strong>Custom repositories</strong>.</li>
+            <li>Add <code>https://github.com/firstof9/ha-air-quality-card</code> with category <strong>Dashboard / Lovelace</strong>.</li>
+            <li>Search for <strong>Air Quality Card</strong>, click <strong>Download</strong>, and add <code>custom:air-quality-card</code> via the Visual Editor.</li>
+          </ol>
+        </div>
+        <div class="info-card">
+          <h3>Manual</h3>
+          <ol>
+            <li>Download <code>air-quality-card.js</code> from the <a href="https://github.com/firstof9/ha-air-quality-card/releases/latest" target="_blank" rel="noopener">latest release</a>.</li>
+            <li>Copy it to <code>&lt;config&gt;/www/air-quality-card.js</code>.</li>
+            <li>Register <code>/local/air-quality-card.js</code> as a JavaScript module under <strong>Settings &rarr; Dashboards &rarr; Resources</strong>.</li>
+          </ol>
+        </div>
+      </div>
+    </section>
+
+    <section id="pollutants">
+      <h2>Supported Entities &amp; Features</h2>
+      <table>
+        <thead>
+          <tr><th>Option</th><th>Pollutant / Metric</th><th>Notes</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><code>aqi_entity</code></td><td><strong>Air Quality Index</strong></td><td>Optional. When omitted, a 0&ndash;100 score is calculated from configured pollutants.</td></tr>
+          <tr><td><code>temp_entity</code>, <code>humid_entity</code></td><td><strong>Temperature &amp; Humidity</strong></td><td>Shown as climate stats and optional <code>mini-graph-card</code> trend lines.</td></tr>
+          <tr><td><code>pm1_entity</code>, <code>pm25_entity</code>, <code>pm4_entity</code>, <code>pm10_entity</code></td><td><strong>Particulate Matter</strong></td><td>PM1, PM2.5, PM4, and PM10 in <code>µg/m³</code> with standard threshold bars.</td></tr>
+          <tr><td><code>co2_entity</code></td><td><strong>Carbon Dioxide (CO₂)</strong></td><td>PPM thresholds for ventilation guidance.</td></tr>
+          <tr><td><code>voc_entity</code>, <code>nox_entity</code></td><td><strong>VOC &amp; NOx</strong></td><td>Sensirion VOC/NOx Index defaults with per-card <code>*_thresholds</code> &amp; <code>*_baseline</code> overrides.</td></tr>
+          <tr><td><code>radon_entity</code></td><td><strong>Radon</strong></td><td>Auto-selects bands for <code>pCi/L</code> or <code>Bq/m³</code> based on unit of measurement.</td></tr>
+        </tbody>
+      </table>
+    </section>
+  </main>
+
+  <footer>
+    <a href="https://github.com/firstof9/ha-air-quality-card" target="_blank" rel="noopener">firstof9/ha-air-quality-card</a> &middot; MIT License
+  </footer>
+
+  <script>
+    // Lightweight Home Assistant element shims for standalone GitHub Pages preview
+    if (!customElements.get('ha-card')) {
+      customElements.define('ha-card', class extends HTMLElement {
+        connectedCallback() {
+          this.style.display = 'block';
+          this.style.borderRadius = '12px';
+          this.style.overflow = 'hidden';
+          this.style.background = 'var(--ha-card-background, #1c1c1c)';
+          this.style.border = '1px solid var(--border)';
+        }
+      });
+    }
+    if (!customElements.get('ha-icon')) {
+      customElements.define('ha-icon', class extends HTMLElement {
+        static get observedAttributes() { return ['icon']; }
+        connectedCallback() { this._render(); }
+        attributeChangedCallback() { this._render(); }
+        _render() {
+          const icon = this.getAttribute('icon') || '';
+          const svgs = {
+            'mdi:chevron-down': '<svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M7.41 8.58L12 13.17l4.59-4.59L18 10l-6 6-6-6 1.41-1.42z"/></svg>',
+            'mdi:chevron-up': '<svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M7.41 15.41L12 10.83l4.59 4.58L18 14l-6-6-6 6 1.41 1.41z"/></svg>'
+          };
+          this.style.display = 'inline-flex';
+          this.style.alignItems = 'center';
+          this.style.justifyContent = 'center';
+          this.innerHTML = svgs[icon] || '●';
+        }
+      });
+    }
+  </script>
+
+  <script type="module">
+    const loadCard = async () => {
+      try {
+        await import('./air-quality-card.js');
+      } catch {
+        await import('../air-quality-card.js');
+      }
+    };
+
+    const PRESETS = [
+      {
+        id: 'score_suite',
+        label: 'Full Suite (Score Mode)',
+        config: {
+          type: 'custom:air-quality-card',
+          title: 'Living Room',
+          default_expanded: true,
+          temp_entity: 'sensor.living_room_temperature',
+          humid_entity: 'sensor.living_room_humidity',
+          pm1_entity: 'sensor.living_room_pm1',
+          pm25_entity: 'sensor.living_room_pm2_5',
+          pm4_entity: 'sensor.living_room_pm4',
+          pm10_entity: 'sensor.living_room_pm10',
+          voc_entity: 'sensor.living_room_voc_index',
+          co2_entity: 'sensor.living_room_co2',
+          nox_entity: 'sensor.living_room_nox_index',
+          radon_entity: 'sensor.living_room_radon'
+        },
+        states: {
+          Good: {
+            'sensor.living_room_temperature': { state: '71.4', attributes: { unit_of_measurement: '°F' } },
+            'sensor.living_room_humidity': { state: '44', attributes: { unit_of_measurement: '%' } },
+            'sensor.living_room_pm1': { state: '3.2', attributes: { unit_of_measurement: 'µg/m³' } },
+            'sensor.living_room_pm2_5': { state: '5.1', attributes: { unit_of_measurement: 'µg/m³' } },
+            'sensor.living_room_pm4': { state: '6.4', attributes: { unit_of_measurement: 'µg/m³' } },
+            'sensor.living_room_pm10': { state: '9.8', attributes: { unit_of_measurement: 'µg/m³' } },
+            'sensor.living_room_voc_index': { state: '100', attributes: {} },
+            'sensor.living_room_co2': { state: '520', attributes: { unit_of_measurement: 'ppm' } },
+            'sensor.living_room_nox_index': { state: '1', attributes: {} },
+            'sensor.living_room_radon': { state: '0.8', attributes: { unit_of_measurement: 'pCi/L' } }
+          },
+          Moderate: {
+            'sensor.living_room_temperature': { state: '74.1', attributes: { unit_of_measurement: '°F' } },
+            'sensor.living_room_humidity': { state: '52', attributes: { unit_of_measurement: '%' } },
+            'sensor.living_room_pm1': { state: '11.4', attributes: { unit_of_measurement: 'µg/m³' } },
+            'sensor.living_room_pm2_5': { state: '22.5', attributes: { unit_of_measurement: 'µg/m³' } },
+            'sensor.living_room_pm4': { state: '28.0', attributes: { unit_of_measurement: 'µg/m³' } },
+            'sensor.living_room_pm10': { state: '45.0', attributes: { unit_of_measurement: 'µg/m³' } },
+            'sensor.living_room_voc_index': { state: '195', attributes: {} },
+            'sensor.living_room_co2': { state: '980', attributes: { unit_of_measurement: 'ppm' } },
+            'sensor.living_room_nox_index': { state: '14', attributes: {} },
+            'sensor.living_room_radon': { state: '2.4', attributes: { unit_of_measurement: 'pCi/L' } }
+          },
+          Poor: {
+            'sensor.living_room_temperature': { state: '76.8', attributes: { unit_of_measurement: '°F' } },
+            'sensor.living_room_humidity': { state: '58', attributes: { unit_of_measurement: '%' } },
+            'sensor.living_room_pm1': { state: '26.0', attributes: { unit_of_measurement: 'µg/m³' } },
+            'sensor.living_room_pm2_5': { state: '48.2', attributes: { unit_of_measurement: 'µg/m³' } },
+            'sensor.living_room_pm4': { state: '56.0', attributes: { unit_of_measurement: 'µg/m³' } },
+            'sensor.living_room_pm10': { state: '92.0', attributes: { unit_of_measurement: 'µg/m³' } },
+            'sensor.living_room_voc_index': { state: '310', attributes: {} },
+            'sensor.living_room_co2': { state: '1450', attributes: { unit_of_measurement: 'ppm' } },
+            'sensor.living_room_nox_index': { state: '38', attributes: {} },
+            'sensor.living_room_radon': { state: '4.5', attributes: { unit_of_measurement: 'pCi/L' } }
+          },
+          Bad: {
+            'sensor.living_room_temperature': { state: '79.2', attributes: { unit_of_measurement: '°F' } },
+            'sensor.living_room_humidity': { state: '65', attributes: { unit_of_measurement: '%' } },
+            'sensor.living_room_pm1': { state: '54.0', attributes: { unit_of_measurement: 'µg/m³' } },
+            'sensor.living_room_pm2_5': { state: '112.0', attributes: { unit_of_measurement: 'µg/m³' } },
+            'sensor.living_room_pm4': { state: '125.0', attributes: { unit_of_measurement: 'µg/m³' } },
+            'sensor.living_room_pm10': { state: '190.0', attributes: { unit_of_measurement: 'µg/m³' } },
+            'sensor.living_room_voc_index': { state: '440', attributes: {} },
+            'sensor.living_room_co2': { state: '2200', attributes: { unit_of_measurement: 'ppm' } },
+            'sensor.living_room_nox_index': { state: '95', attributes: {} },
+            'sensor.living_room_radon': { state: '9.2', attributes: { unit_of_measurement: 'pCi/L' } }
+          }
+        }
+      },
+      {
+        id: 'aqi_mode',
+        label: 'AQI Sensor Mode',
+        config: {
+          type: 'custom:air-quality-card',
+          title: 'Bedroom',
+          aqi_entity: 'sensor.bedroom_aqi',
+          temp_entity: 'sensor.bedroom_temperature',
+          humid_entity: 'sensor.bedroom_humidity',
+          pm25_entity: 'sensor.bedroom_pm2_5',
+          pm10_entity: 'sensor.bedroom_pm10',
+          co2_entity: 'sensor.bedroom_co2',
+          voc_entity: 'sensor.bedroom_voc_index'
+        },
+        states: {
+          'Good (28)': {
+            'sensor.bedroom_aqi': { state: '28', attributes: {} },
+            'sensor.bedroom_temperature': { state: '68.5', attributes: { unit_of_measurement: '°F' } },
+            'sensor.bedroom_humidity': { state: '46', attributes: { unit_of_measurement: '%' } },
+            'sensor.bedroom_pm2_5': { state: '6.8', attributes: { unit_of_measurement: 'µg/m³' } },
+            'sensor.bedroom_pm10': { state: '12.1', attributes: { unit_of_measurement: 'µg/m³' } },
+            'sensor.bedroom_co2': { state: '610', attributes: { unit_of_measurement: 'ppm' } },
+            'sensor.bedroom_voc_index': { state: '105', attributes: {} }
+          },
+          'Moderate (78)': {
+            'sensor.bedroom_aqi': { state: '78', attributes: {} },
+            'sensor.bedroom_temperature': { state: '70.2', attributes: { unit_of_measurement: '°F' } },
+            'sensor.bedroom_humidity': { state: '49', attributes: { unit_of_measurement: '%' } },
+            'sensor.bedroom_pm2_5': { state: '24.8', attributes: { unit_of_measurement: 'µg/m³' } },
+            'sensor.bedroom_pm10': { state: '48.0', attributes: { unit_of_measurement: 'µg/m³' } },
+            'sensor.bedroom_co2': { state: '940', attributes: { unit_of_measurement: 'ppm' } },
+            'sensor.bedroom_voc_index': { state: '185', attributes: {} }
+          },
+          'Unhealthy SG (125)': {
+            'sensor.bedroom_aqi': { state: '125', attributes: {} },
+            'sensor.bedroom_temperature': { state: '72.0', attributes: { unit_of_measurement: '°F' } },
+            'sensor.bedroom_humidity': { state: '51', attributes: { unit_of_measurement: '%' } },
+            'sensor.bedroom_pm2_5': { state: '45.0', attributes: { unit_of_measurement: 'µg/m³' } },
+            'sensor.bedroom_pm10': { state: '82.0', attributes: { unit_of_measurement: 'µg/m³' } },
+            'sensor.bedroom_co2': { state: '1320', attributes: { unit_of_measurement: 'ppm' } },
+            'sensor.bedroom_voc_index': { state: '275', attributes: {} }
+          },
+          'Unhealthy (172)': {
+            'sensor.bedroom_aqi': { state: '172', attributes: {} },
+            'sensor.bedroom_temperature': { state: '73.5', attributes: { unit_of_measurement: '°F' } },
+            'sensor.bedroom_humidity': { state: '54', attributes: { unit_of_measurement: '%' } },
+            'sensor.bedroom_pm2_5': { state: '96.0', attributes: { unit_of_measurement: 'µg/m³' } },
+            'sensor.bedroom_pm10': { state: '150.0', attributes: { unit_of_measurement: 'µg/m³' } },
+            'sensor.bedroom_co2': { state: '1750', attributes: { unit_of_measurement: 'ppm' } },
+            'sensor.bedroom_voc_index': { state: '360', attributes: {} }
+          },
+          'Hazardous (340)': {
+            'sensor.bedroom_aqi': { state: '340', attributes: {} },
+            'sensor.bedroom_temperature': { state: '75.0', attributes: { unit_of_measurement: '°F' } },
+            'sensor.bedroom_humidity': { state: '60', attributes: { unit_of_measurement: '%' } },
+            'sensor.bedroom_pm2_5': { state: '285.0', attributes: { unit_of_measurement: 'µg/m³' } },
+            'sensor.bedroom_pm10': { state: '410.0', attributes: { unit_of_measurement: 'µg/m³' } },
+            'sensor.bedroom_co2': { state: '2400', attributes: { unit_of_measurement: 'ppm' } },
+            'sensor.bedroom_voc_index': { state: '480', attributes: {} }
+          }
+        }
+      },
+      {
+        id: 'collapsed',
+        label: 'Compact / Collapsed',
+        config: {
+          type: 'custom:air-quality-card',
+          title: 'Home Office',
+          default_expanded: false,
+          temp_entity: 'sensor.office_temperature',
+          humid_entity: 'sensor.office_humidity',
+          pm25_entity: 'sensor.office_pm2_5',
+          co2_entity: 'sensor.office_co2'
+        },
+        states: {
+          Good: {
+            'sensor.office_temperature': { state: '21.8', attributes: { unit_of_measurement: '°C' } },
+            'sensor.office_humidity': { state: '42', attributes: { unit_of_measurement: '%' } },
+            'sensor.office_pm2_5': { state: '4.2', attributes: { unit_of_measurement: 'µg/m³' } },
+            'sensor.office_co2': { state: '580', attributes: { unit_of_measurement: 'ppm' } }
+          },
+          'Elevated CO₂': {
+            'sensor.office_temperature': { state: '23.4', attributes: { unit_of_measurement: '°C' } },
+            'sensor.office_humidity': { state: '48', attributes: { unit_of_measurement: '%' } },
+            'sensor.office_pm2_5': { state: '8.5', attributes: { unit_of_measurement: 'µg/m³' } },
+            'sensor.office_co2': { state: '1520', attributes: { unit_of_measurement: 'ppm' } }
+          },
+          'No Data': {
+            'sensor.office_temperature': { state: 'unavailable', attributes: { unit_of_measurement: '°C' } },
+            'sensor.office_humidity': { state: 'unavailable', attributes: { unit_of_measurement: '%' } },
+            'sensor.office_pm2_5': { state: 'unavailable', attributes: { unit_of_measurement: 'µg/m³' } },
+            'sensor.office_co2': { state: 'unavailable', attributes: { unit_of_measurement: 'ppm' } }
+          }
+        }
+      },
+      {
+        id: 'custom_thresholds',
+        label: 'Custom Thresholds & Radon (Bq/m³)',
+        config: {
+          type: 'custom:air-quality-card',
+          title: 'Basement',
+          temp_entity: 'sensor.basement_temperature',
+          humid_entity: 'sensor.basement_humidity',
+          voc_entity: 'sensor.basement_custom_voc',
+          voc_thresholds: { good: 50, mod: 100, high: 150 },
+          voc_baseline: 10,
+          radon_entity: 'sensor.basement_radon'
+        },
+        states: {
+          Clean: {
+            'sensor.basement_temperature': { state: '18.2', attributes: { unit_of_measurement: '°C' } },
+            'sensor.basement_humidity': { state: '48', attributes: { unit_of_measurement: '%' } },
+            'sensor.basement_custom_voc': { state: '22', attributes: {} },
+            'sensor.basement_radon': { state: '62', attributes: { unit_of_measurement: 'Bq/m³' } }
+          },
+          'Elevated Radon': {
+            'sensor.basement_temperature': { state: '18.5', attributes: { unit_of_measurement: '°C' } },
+            'sensor.basement_humidity': { state: '55', attributes: { unit_of_measurement: '%' } },
+            'sensor.basement_custom_voc': { state: '45', attributes: {} },
+            'sensor.basement_radon': { state: '195', attributes: { unit_of_measurement: 'Bq/m³' } }
+          },
+          'High VOC': {
+            'sensor.basement_temperature': { state: '19.1', attributes: { unit_of_measurement: '°C' } },
+            'sensor.basement_humidity': { state: '52', attributes: { unit_of_measurement: '%' } },
+            'sensor.basement_custom_voc': { state: '168', attributes: {} },
+            'sensor.basement_radon': { state: '85', attributes: { unit_of_measurement: 'Bq/m³' } }
+          }
+        }
+      }
+    ];
+
+    const toYaml = (obj, indent = 0) => {
+      const pad = ' '.repeat(indent);
+      return Object.entries(obj).map(([k, v]) => {
+        if (Array.isArray(v)) {
+          return `${pad}${k}:\n` + v.map(item => `${pad}  - ${item}`).join('\n');
+        }
+        if (v && typeof v === 'object') {
+          return `${pad}${k}:\n` + toYaml(v, indent + 2);
+        }
+        return `${pad}${k}: ${v}`;
+      }).join('\n');
+    };
+
+    await loadCard();
+
+    const tabsEl = document.getElementById('preset-tabs');
+    const pillsEl = document.getElementById('state-pills');
+    const mountEl = document.getElementById('card-mount');
+    const yamlEl = document.getElementById('yaml-code');
+
+    let currentPreset = PRESETS[0];
+    let currentStateName = Object.keys(currentPreset.states)[0];
+
+    const renderCard = () => {
+      mountEl.innerHTML = '';
+      const card = document.createElement('air-quality-card');
+      card.setConfig(currentPreset.config);
+      card.hass = {
+        states: currentPreset.states[currentStateName],
+        locale: { language: 'en' }
+      };
+      mountEl.appendChild(card);
+      yamlEl.textContent = toYaml(currentPreset.config);
+    };
+
+    const renderPills = () => {
+      pillsEl.innerHTML = '';
+      Object.keys(currentPreset.states).forEach((name) => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'pill' + (name === currentStateName ? ' active' : '');
+        btn.textContent = name;
+        btn.onclick = () => {
+          currentStateName = name;
+          renderPills();
+          renderCard();
+        };
+        pillsEl.appendChild(btn);
+      });
+    };
+
+    const renderTabs = () => {
+      tabsEl.innerHTML = '';
+      PRESETS.forEach((preset) => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'tab' + (preset.id === currentPreset.id ? ' active' : '');
+        btn.textContent = preset.label;
+        btn.onclick = () => {
+          currentPreset = preset;
+          currentStateName = Object.keys(preset.states)[0];
+          renderTabs();
+          renderPills();
+          renderCard();
+        };
+        tabsEl.appendChild(btn);
+      });
+    };
+
+    document.getElementById('copy-yaml').onclick = async (e) => {
+      await navigator.clipboard.writeText(yamlEl.textContent);
+      e.target.textContent = 'Copied!';
+      setTimeout(() => (e.target.textContent = 'Copy'), 1500);
+    };
+
+    document.getElementById('theme-toggle').onclick = (e) => {
+      const html = document.documentElement;
+      const next = html.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+      html.setAttribute('data-theme', next);
+      e.target.textContent = next === 'dark' ? 'Light Theme' : 'Dark Theme';
+    };
+
+    renderTabs();
+    renderPills();
+    renderCard();
+  </script>
+</body>
+</html>

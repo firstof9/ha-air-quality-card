@@ -436,6 +436,10 @@
     if (!customElements.get('ha-icon')) {
       customElements.define('ha-icon', class extends HTMLElement {
         static get observedAttributes() { return ['icon']; }
+        constructor() {
+          super();
+          this.attachShadow({ mode: 'open' });
+        }
         connectedCallback() { this._render(); }
         attributeChangedCallback() { this._render(); }
         _render() {
@@ -444,10 +448,7 @@
             'mdi:chevron-down': '<svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M7.41 8.58L12 13.17l4.59-4.59L18 10l-6 6-6-6 1.41-1.42z"/></svg>',
             'mdi:chevron-up': '<svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M7.41 15.41L12 10.83l4.59 4.58L18 14l-6-6-6 6 1.41 1.41z"/></svg>'
           };
-          this.style.display = 'inline-flex';
-          this.style.alignItems = 'center';
-          this.style.justifyContent = 'center';
-          this.innerHTML = svgs[icon] || '●';
+          this.shadowRoot.innerHTML = `<style>:host{display:inline-flex;align-items:center;justify-content:center;}</style>${svgs[icon] || '●'}`;
         }
       });
     }
